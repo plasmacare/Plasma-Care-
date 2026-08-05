@@ -1,0 +1,125 @@
+.home {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.home__hero {
+  padding: 8px 0 4px;
+}
+.home__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.home__brand h1 {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--navy-950);
+  line-height: 1.1;
+}
+.home__tagline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--red-600);
+  margin-top: 2px;
+}
+.home__sub {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--slate);
+}
+
+.home__section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--navy-800);
+  margin-bottom: 14px;
+}
+
+.home__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.service-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-decoration: none;
+  color: var(--ink);
+  position: relative;
+  min-height: 132px;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.service-card--live {
+  border-color: var(--navy-100);
+  box-shadow: var(--shadow-card);
+}
+.service-card--live:active {
+  transform: scale(0.98);
+}
+.service-card--disabled {
+  opacity: 0.55;
+}
+.service-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.service-card--live .service-card__icon {
+  background: var(--red-50);
+}
+.service-card__name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--navy-950);
+}
+.service-card__desc {
+  font-size: 12px;
+  color: var(--slate);
+  line-height: 1.4;
+}
+.service-card__badge {
+  margin-top: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slate-light);
+  background: var(--paper);
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+.service-card__cta {
+  margin-top: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--red-600);
+}
+
+.home__footer {
+  margin-top: 32px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--slate);
+}
+.home__footer a {
+  color: var(--red-600);
+  font-weight: 700;
+  text-decoration: none;
+}
