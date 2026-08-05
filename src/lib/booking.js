@@ -21,34 +21,14 @@ export async function fetchTests() {
 }
 
 export async function fetchTimeSlots(date) {
-  // time_slots is a reusable daily template (same 15 slots every day).
-  // Availability per date is computed live from existing bookings —
-  // no pre-generated rows needed for future dates.
-  const { data: slots, error: slotsError } = await supabase
+  const { data, error } = await supabase
     .from('time_slots')
     .select('*')
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true })
-  if (slotsError) throw slotsError
-
-  const { data: dayBookings, error: bookingsError } = await supabase
-    .from('bookings')
-    .select('slot_id')
-    .eq('scheduled_date', date)
-    .neq('status', 'cancelled')
-  if (bookingsError) throw bookingsError
-
-  const bookedCountBySlot = {}
-  for (const b of dayBookings) {
-    bookedCountBySlot[b.slot_id] = (bookedCountBySlot[b.slot_id] || 0) + 1
-  }
-
-  // max_capacity of 0 means unlimited (admin setting) — always available.
-  return slots.filter((s) => {
-    if (s.max_capacity === 0) return true
-    const booked = bookedCountBySlot[s.id] || 0
-    return booked < s.max_capacity
-  })
+    .eq('slot_date', date)
+    .order('start_time', { ascending: true })
+  if (error) throw error
+  // only slots with capacity left
+  return data.filter((s) => s.booked_count < s.max_capacity)
 }
 
 export async function createBooking({
