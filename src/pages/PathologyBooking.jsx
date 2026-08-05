@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import StepTracker from '../components/StepTracker'
 import LocationPicker from '../components/LocationPicker'
+import LanguageSwitcher from '../components/LanguageSwitcher'
+import { useLanguage } from '../lib/i18n.jsx'
 import { fetchPackages, fetchTests, fetchTimeSlots, createBooking, markBookingVerified } from '../lib/booking'
 import { sendOtp, verifyOtp } from '../lib/otp'
 import './PathologyBooking.css'
@@ -18,6 +20,7 @@ function nextDays(n) {
 
 export default function PathologyBooking() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   const [step, setStep] = useState(STEP.TESTS)
   const [packages, setPackages] = useState([])
@@ -59,8 +62,8 @@ export default function PathologyBooking() {
   const itemCount = selectedPackages.length + selectedTests.length
 
   const stepLabels = bookingType === 'lab_visit'
-    ? ['Tests', 'Type', 'Slot', 'Details', 'Verify']
-    : ['Tests', 'Type', 'Location', 'Slot', 'Details', 'Verify']
+    ? [t('step_tests'), t('step_type'), t('step_slot'), t('step_details'), t('step_verify')]
+    : [t('step_tests'), t('step_type'), t('step_location'), t('step_slot'), t('step_details'), t('step_verify')]
 
   const visualStep = bookingType === 'lab_visit' && step >= STEP.LOCATION ? step - 1 : step
 
@@ -136,7 +139,7 @@ export default function PathologyBooking() {
   }
 
   if (step === STEP.DONE) {
-    return <ConfirmationScreen bookingId={bookingId} onHome={() => navigate('/')} />
+    return <ConfirmationScreen bookingId={bookingId} onHome={() => navigate('/')} t={t} />
   }
 
   return (
@@ -145,7 +148,9 @@ export default function PathologyBooking() {
         <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
           <BackIcon />
         </button>
-        <h1>Pathology Booking</h1>
+        <h1>{t('bookingTitle')}</h1>
+        <div className="page-header__spacer" />
+        <LanguageSwitcher />
       </div>
 
       <StepTracker steps={stepLabels} currentStep={visualStep} />
@@ -158,11 +163,12 @@ export default function PathologyBooking() {
           selectedTests={selectedTests}
           togglePackage={togglePackage}
           toggleTest={toggleTest}
+          t={t}
         />
       )}
 
       {step === STEP.TYPE && (
-        <TypeStep bookingType={bookingType} setBookingType={setBookingType} />
+        <TypeStep bookingType={bookingType} setBookingType={setBookingType} t={t} />
       )}
 
       {step === STEP.LOCATION && (
@@ -170,7 +176,7 @@ export default function PathologyBooking() {
       )}
 
       {step === STEP.SCHEDULE && (
-        <ScheduleStep date={date} setDate={setDate} slots={slots} slotId={slotId} setSlotId={setSlotId} />
+        <ScheduleStep date={date} setDate={setDate} slots={slots} slotId={slotId} setSlotId={setSlotId} t={t} />
       )}
 
       {step === STEP.DETAILS && (
@@ -178,6 +184,7 @@ export default function PathologyBooking() {
           name={name} setName={setName}
           phone={phone} setPhone={setPhone}
           error={otpError}
+          t={t}
         />
       )}
 
@@ -187,6 +194,7 @@ export default function PathologyBooking() {
           otpCode={otpCode} setOtpCode={setOtpCode}
           onResend={resendOtp}
           error={otpError}
+          t={t}
         />
       )}
 
@@ -194,7 +202,7 @@ export default function PathologyBooking() {
         <div className="sticky-footer">
           <div className="sticky-footer__summary">
             <div className="sticky-footer__amount">₹{total || 0}</div>
-            <div className="sticky-footer__label">{itemCount} item{itemCount !== 1 ? 's' : ''} selected</div>
+            <div className="sticky-footer__label">{itemCount} {itemCount !== 1 ? t('itemsSelected') : t('itemSelected')}</div>
           </div>
           <FooterButton
             step={step}
@@ -208,6 +216,7 @@ export default function PathologyBooking() {
             onSchedule={() => setStep(STEP.DETAILS)}
             onDetails={requestOtp}
             onVerify={confirmBooking}
+            t={t}
           />
         </div>
       )}
@@ -215,29 +224,29 @@ export default function PathologyBooking() {
   )
 }
 
-function FooterButton({ step, itemCount, bookingType, date, slotId, busy, onTests, onType, onSchedule, onDetails, onVerify }) {
+function FooterButton({ step, itemCount, bookingType, date, slotId, busy, onTests, onType, onSchedule, onDetails, onVerify, t }) {
   if (step === STEP.TESTS) {
-    return <button className="btn btn--primary" disabled={itemCount === 0} onClick={onTests}>Continue</button>
+    return <button className="btn btn--primary" disabled={itemCount === 0} onClick={onTests}>{t('continue')}</button>
   }
   if (step === STEP.TYPE) {
-    return <button className="btn btn--primary" disabled={!bookingType} onClick={onType}>Continue</button>
+    return <button className="btn btn--primary" disabled={!bookingType} onClick={onType}>{t('continue')}</button>
   }
   if (step === STEP.SCHEDULE) {
-    return <button className="btn btn--primary" disabled={!date || !slotId} onClick={onSchedule}>Continue</button>
+    return <button className="btn btn--primary" disabled={!date || !slotId} onClick={onSchedule}>{t('continue')}</button>
   }
   if (step === STEP.DETAILS) {
-    return <button className="btn btn--primary" disabled={busy} onClick={onDetails}>{busy ? 'Sending…' : 'Send OTP'}</button>
+    return <button className="btn btn--primary" disabled={busy} onClick={onDetails}>{busy ? t('sending') : t('sendOtp')}</button>
   }
   if (step === STEP.VERIFY) {
-    return <button className="btn btn--primary" disabled={busy} onClick={onVerify}>{busy ? 'Verifying…' : 'Verify & Confirm'}</button>
+    return <button className="btn btn--primary" disabled={busy} onClick={onVerify}>{busy ? t('verifying') : t('verifyConfirm')}</button>
   }
   return null
 }
 
-function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest }) {
+function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, t }) {
   return (
     <div className="tests-step">
-      <h2 className="section-title">Packages</h2>
+      <h2 className="section-title">{t('packages')}</h2>
       <div className="item-list">
         {packages.map((p) => (
           <label key={p.id} className={`item-row ${selectedPackages.includes(p.id) ? 'is-selected' : ''}`}>
@@ -251,16 +260,16 @@ function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, t
         ))}
       </div>
 
-      <h2 className="section-title">Individual Tests</h2>
+      <h2 className="section-title">{t('individualTests')}</h2>
       <div className="item-list">
-        {tests.map((t) => (
-          <label key={t.id} className={`item-row ${selectedTests.includes(t.id) ? 'is-selected' : ''}`}>
-            <input type="checkbox" checked={selectedTests.includes(t.id)} onChange={() => toggleTest(t.id)} />
+        {tests.map((tItem) => (
+          <label key={tItem.id} className={`item-row ${selectedTests.includes(tItem.id) ? 'is-selected' : ''}`}>
+            <input type="checkbox" checked={selectedTests.includes(tItem.id)} onChange={() => toggleTest(tItem.id)} />
             <div className="item-row__info">
-              <span className="item-row__name">{t.name}</span>
-              <span className="item-row__desc">{t.category}</span>
+              <span className="item-row__name">{tItem.name}</span>
+              <span className="item-row__desc">{tItem.category}</span>
             </div>
-            <span className="item-row__price">₹{t.price}</span>
+            <span className="item-row__price">₹{tItem.price}</span>
           </label>
         ))}
       </div>
@@ -268,7 +277,7 @@ function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, t
   )
 }
 
-function TypeStep({ bookingType, setBookingType }) {
+function TypeStep({ bookingType, setBookingType, t }) {
   return (
     <div className="type-step">
       <button
@@ -277,8 +286,8 @@ function TypeStep({ bookingType, setBookingType }) {
       >
         <HomeIcon />
         <div>
-          <h3>Home Collection</h3>
-          <p>Our phlebotomist visits your address</p>
+          <h3>{t('homeCollection')}</h3>
+          <p>{t('homeCollectionDesc')}</p>
         </div>
       </button>
       <button
@@ -287,19 +296,19 @@ function TypeStep({ bookingType, setBookingType }) {
       >
         <LabIcon />
         <div>
-          <h3>Visit Lab</h3>
-          <p>Walk in to our Kalinga Nagar center</p>
+          <h3>{t('visitLab')}</h3>
+          <p>{t('visitLabDesc')}</p>
         </div>
       </button>
     </div>
   )
 }
 
-function ScheduleStep({ date, setDate, slots, slotId, setSlotId }) {
+function ScheduleStep({ date, setDate, slots, slotId, setSlotId, t }) {
   const days = nextDays(7)
   return (
     <div className="schedule-step">
-      <h2 className="section-title">Pick a Date</h2>
+      <h2 className="section-title">{t('pickDate')}</h2>
       <div className="day-chips">
         {days.map((d) => {
           const isSelected = date && d.toDateString() === date.toDateString()
@@ -314,8 +323,8 @@ function ScheduleStep({ date, setDate, slots, slotId, setSlotId }) {
 
       {date && (
         <>
-          <h2 className="section-title">Pick a Time Slot</h2>
-          {slots.length === 0 && <p className="empty-note">Is din ke liye slots available nahi hain. Doosri date try karein.</p>}
+          <h2 className="section-title">{t('pickSlot')}</h2>
+          {slots.length === 0 && <p className="empty-note">{t('noSlots')}</p>}
           <div className="slot-list">
             {slots.map((s) => (
               <button
@@ -333,27 +342,27 @@ function ScheduleStep({ date, setDate, slots, slotId, setSlotId }) {
   )
 }
 
-function DetailsStep({ name, setName, phone, setPhone, error }) {
+function DetailsStep({ name, setName, phone, setPhone, error, t }) {
   return (
     <div className="details-step">
       <div className="field">
-        <label>Full Name</label>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Aapka naam" />
+        <label>{t('fullName')}</label>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('fullNamePlaceholder')} />
       </div>
       <div className="field">
-        <label>Phone Number</label>
-        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-digit mobile number" />
+        <label>{t('phoneNumber')}</label>
+        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder={t('phonePlaceholder')} />
       </div>
-      <p className="details-step__note">Booking confirm karne ke liye hum aapko WhatsApp pe OTP bhejenge.</p>
+      <p className="details-step__note">{t('otpNote')}</p>
       {error && <p className="field-error">{error}</p>}
     </div>
   )
 }
 
-function VerifyStep({ phone, otpCode, setOtpCode, onResend, error }) {
+function VerifyStep({ phone, otpCode, setOtpCode, onResend, error, t }) {
   return (
     <div className="verify-step">
-      <p className="verify-step__sub">+91 {phone} pe OTP bheja gaya hai</p>
+      <p className="verify-step__sub">{t('otpSentTo')} +91 {phone}</p>
       <input
         type="tel"
         inputMode="numeric"
@@ -365,22 +374,22 @@ function VerifyStep({ phone, otpCode, setOtpCode, onResend, error }) {
       />
       {error && <p className="field-error">{error}</p>}
       <div className="verify-step__resend">
-        <span>OTP nahi mila?</span>
-        <button className="btn btn--ghost" onClick={() => onResend('whatsapp')}>WhatsApp par dobara bhejein</button>
-        <button className="btn btn--ghost" onClick={() => onResend('call')}>Call se OTP mangwayein</button>
+        <span>{t('otpNotReceived')}</span>
+        <button className="btn btn--ghost" onClick={() => onResend('whatsapp')}>{t('resendWhatsapp')}</button>
+        <button className="btn btn--ghost" onClick={() => onResend('call')}>{t('resendCall')}</button>
       </div>
     </div>
   )
 }
 
-function ConfirmationScreen({ bookingId, onHome }) {
+function ConfirmationScreen({ bookingId, onHome, t }) {
   return (
     <div className="page confirmation-screen">
       <div className="confirmation-screen__icon"><CheckIcon /></div>
-      <h1>Booking Confirmed!</h1>
-      <p className="confirmation-screen__id">Booking ID: {bookingId?.slice(0, 8).toUpperCase()}</p>
-      <p className="confirmation-screen__note">Hum jald hi aapko WhatsApp pe confirmation bhejenge. Kisi bhi sawaal ke liye 8112060205 pe call/WhatsApp karein.</p>
-      <button className="btn btn--primary" onClick={onHome}>Back to Home</button>
+      <h1>{t('bookingConfirmed')}</h1>
+      <p className="confirmation-screen__id">{t('bookingId')}: {bookingId?.slice(0, 8).toUpperCase()}</p>
+      <p className="confirmation-screen__note">{t('confirmationNote')} 8112060205</p>
+      <button className="btn btn--primary" onClick={onHome}>{t('backToHome')}</button>
     </div>
   )
 }

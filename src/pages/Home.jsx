@@ -1,56 +1,58 @@
 import { Link } from 'react-router-dom'
 import PulseDivider from '../components/PulseDivider'
+import LanguageSwitcher from '../components/LanguageSwitcher'
+import { useLanguage } from '../lib/i18n.jsx'
 import './Home.css'
 
-const SERVICES = [
-  {
-    key: 'pathology',
-    name: 'Pathology Tests',
-    desc: 'Blood, urine & stool — lab visit or home collection',
-    icon: TubeIcon,
-    live: true,
-  },
-  { key: 'radiology', name: 'Radiology', desc: 'X-Ray & imaging', icon: ScanIcon },
-  { key: 'consultation', name: 'Doctor Consultation', desc: 'Expert care, personalized attention', icon: DoctorIcon },
-  { key: 'daycare', name: 'Day Care', desc: 'Professional medical observation', icon: BedIcon },
-  { key: 'pharmacy', name: 'Pharmacy', desc: 'Quality medicines for better health', icon: PillIcon },
-  { key: 'insurance', name: 'Insurance', desc: 'Life & non-life', icon: ShieldIcon },
-]
-
 export default function Home() {
+  const { t } = useLanguage()
+
+  const SERVICES = [
+    { key: 'pathology', name: t('svc_pathology_name'), desc: t('svc_pathology_desc'), icon: TubeIcon, live: true },
+    { key: 'radiology', name: t('svc_radiology_name'), desc: t('svc_radiology_desc'), icon: ScanIcon },
+    { key: 'consultation', name: t('svc_consultation_name'), desc: t('svc_consultation_desc'), icon: DoctorIcon },
+    { key: 'daycare', name: t('svc_daycare_name'), desc: t('svc_daycare_desc'), icon: BedIcon },
+    { key: 'pharmacy', name: t('svc_pharmacy_name'), desc: t('svc_pharmacy_desc'), icon: PillIcon },
+    { key: 'insurance', name: t('svc_insurance_name'), desc: t('svc_insurance_desc'), icon: ShieldIcon },
+  ]
+
   return (
     <div className="home">
+      <div className="home__top-bar">
+        <LanguageSwitcher />
+      </div>
+
       <header className="home__hero">
         <div className="home__brand">
           <DropletIcon />
           <div>
             <h1>Plasma Care</h1>
-            <p className="home__tagline">Precision in every diagnosis</p>
+            <p className="home__tagline">{t('tagline')}</p>
           </div>
         </div>
         <p className="home__sub">
-          A unit of Trivana Ventures LLP · G13 K8 BDA Market Complex, Kalinga Nagar
+          {t('unitOf')} · G13 K8 BDA Market Complex, Kalinga Nagar
         </p>
         <PulseDivider />
       </header>
 
       <section className="home__services">
-        <h2 className="home__section-title">Our Services</h2>
+        <h2 className="home__section-title">{t('ourServices')}</h2>
         <div className="home__grid">
           {SERVICES.map((s) => (
-            <ServiceCard key={s.key} service={s} />
+            <ServiceCard key={s.key} service={s} t={t} />
           ))}
         </div>
       </section>
 
       <footer className="home__footer">
-        <p>Call / WhatsApp <a href="tel:8112060205">8112060205</a></p>
+        <p>{t('callWhatsapp')} <a href="tel:8112060205">8112060205</a></p>
       </footer>
     </div>
   )
 }
 
-function ServiceCard({ service }) {
+function ServiceCard({ service, t }) {
   const Icon = service.icon
   const content = (
     <>
@@ -59,8 +61,8 @@ function ServiceCard({ service }) {
       </div>
       <h3 className="service-card__name">{service.name}</h3>
       <p className="service-card__desc">{service.desc}</p>
-      {!service.live && <span className="service-card__badge">Coming Soon</span>}
-      {service.live && <span className="service-card__cta">Book now →</span>}
+      {!service.live && <span className="service-card__badge">{t('comingSoon')}</span>}
+      {service.live && <span className="service-card__cta">{t('bookNow')}</span>}
     </>
   )
 
@@ -78,7 +80,6 @@ function ServiceCard({ service }) {
   )
 }
 
-/* --- inline icon set, kept simple/geometric to match the brand mark --- */
 function DropletIcon() {
   return (
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none">

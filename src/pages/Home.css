@@ -4,6 +4,12 @@
   padding: 24px 20px 40px;
 }
 
+.home__top-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .home__hero {
   padding: 8px 0 4px;
 }
