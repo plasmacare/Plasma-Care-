@@ -65,18 +65,23 @@
   text-decoration: none;
   color: var(--ink);
   position: relative;
-  min-height: 132px;
+  min-height: 108px;
   transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 .service-card--live {
+  grid-column: 1 / -1;
   border-color: var(--navy-100);
   box-shadow: var(--shadow-card);
+  min-height: 150px;
+  padding: 20px;
 }
 .service-card--live:active {
-  transform: scale(0.98);
+  transform: scale(0.99);
 }
 .service-card--disabled {
   opacity: 0.55;
+  padding: 14px;
+  min-height: 96px;
 }
 .service-card__icon {
   width: 40px;
