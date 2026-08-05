@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { reverseGeocode, autosuggest } from '../lib/geocode'
+import { useLanguage } from '../lib/i18n.jsx'
 import './LocationPicker.css'
 
 // Leaflet's default marker icons reference image files that don't bundle
@@ -20,6 +21,7 @@ L.Icon.Default.mergeOptions({
 const DEFAULT_CENTER = { lat: 20.2961, lng: 85.8245 } // Bhubaneswar fallback
 
 export default function LocationPicker({ onConfirm }) {
+  const { t } = useLanguage()
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const markerInstance = useRef(null)
@@ -133,7 +135,7 @@ export default function LocationPicker({ onConfirm }) {
         <SearchIcon />
         <input
           type="text"
-          placeholder="Area, street ya landmark search karein"
+          placeholder={t('searchPlaceholder')}
           value={query}
           onChange={handleSearchChange}
         />
@@ -154,27 +156,27 @@ export default function LocationPicker({ onConfirm }) {
         {!ready && <div className="location-picker__loading">Map load ho raha hai…</div>}
         <button className="location-picker__locate-btn" onClick={useMyLocation} disabled={locating} type="button">
           <PinIcon />
-          {locating ? 'Dhoondh rahe hain…' : 'Use my current location'}
+          {locating ? t('locating') : t('useMyLocation')}
         </button>
       </div>
 
       <div className="location-picker__form">
         <label>
-          Delivery Address
+          {t('deliveryAddress')}
           <textarea
             rows={2}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Pin drop karne ke baad address yahan aa jayega, chahe to edit kar sakte hain"
+            placeholder={t('addressPlaceholder')}
           />
         </label>
         <label>
-          Landmark (optional)
+          {t('landmark')}
           <input
             type="text"
             value={landmark}
             onChange={(e) => setLandmark(e.target.value)}
-            placeholder="e.g. Near XYZ School"
+            placeholder={t('landmarkPlaceholder')}
           />
         </label>
       </div>
@@ -182,7 +184,7 @@ export default function LocationPicker({ onConfirm }) {
       {error && <p className="location-picker__error">{error}</p>}
 
       <button className="btn btn--primary btn--block" onClick={confirm} type="button">
-        Confirm Location
+        {t('confirmLocation')}
       </button>
     </div>
   )
