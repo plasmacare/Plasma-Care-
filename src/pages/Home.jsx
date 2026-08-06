@@ -1,19 +1,49 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import PulseDivider from '../components/PulseDivider'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useLanguage } from '../lib/i18n.jsx'
+import logoIcon from '../assets/logo-icon.png'
 import './Home.css'
+
+const PHONE = '8112060205'
+const WHATSAPP_LINK = `https://wa.me/91${PHONE}`
+const EMAIL = 'official.plasmacare@gmail.com'
+const INSTAGRAM_HANDLE = 'official.plasmacare'
+const INSTAGRAM_LINK = 'https://instagram.com/official.plasmacare'
 
 export default function Home() {
   const { t } = useLanguage()
+  const [showContactSheet, setShowContactSheet] = useState(false)
 
-  const SERVICES = [
-    { key: 'pathology', name: t('svc_pathology_name'), desc: t('svc_pathology_desc'), icon: TubeIcon, live: true },
-    { key: 'radiology', name: t('svc_radiology_name'), desc: t('svc_radiology_desc'), icon: ScanIcon },
-    { key: 'consultation', name: t('svc_consultation_name'), desc: t('svc_consultation_desc'), icon: DoctorIcon },
-    { key: 'daycare', name: t('svc_daycare_name'), desc: t('svc_daycare_desc'), icon: BedIcon },
-    { key: 'pharmacy', name: t('svc_pharmacy_name'), desc: t('svc_pharmacy_desc'), icon: PillIcon },
-    { key: 'insurance', name: t('svc_insurance_name'), desc: t('svc_insurance_desc'), icon: ShieldIcon },
+  const OTHER_SERVICES = [
+    { key: 'radiology', name: t('svc_radiology_name'), icon: ScanIcon },
+    { key: 'consultation', name: t('svc_consultation_name'), icon: DoctorIcon },
+    { key: 'daycare', name: t('svc_daycare_name'), icon: BedIcon },
+    { key: 'pharmacy', name: t('svc_pharmacy_name'), icon: PillIcon },
+    { key: 'insurance', name: t('svc_insurance_name'), icon: ShieldIcon },
+  ]
+
+  const WHY_CHOOSE = [
+    { key: 'reports', title: t('why_reports_title'), desc: t('why_reports_desc'), icon: ReportIcon },
+    { key: 'experts', title: t('why_experts_title'), desc: t('why_experts_desc'), icon: DoctorIcon },
+    { key: 'home', title: t('why_home_title'), desc: t('why_home_desc'), icon: HomeCollectIcon },
+    { key: 'affordable', title: t('why_affordable_title'), desc: t('why_affordable_desc'), icon: RupeeIcon },
+    { key: 'fast', title: t('why_fast_title'), desc: t('why_fast_desc'), icon: ClockIcon },
+    { key: 'personal', title: t('why_personal_title'), desc: t('why_personal_desc'), icon: HeartHandIcon },
+    { key: 'preventive', title: t('why_preventive_title'), desc: t('why_preventive_desc'), icon: ShieldIcon },
+    { key: 'quality', title: t('why_quality_title'), desc: t('why_quality_desc'), icon: CheckHeartIcon },
+  ]
+
+  const PACKAGES = [
+    { key: 'fullbody', name: t('pkg_fullbody'), icon: PersonIcon },
+    { key: 'senior', name: t('pkg_senior'), icon: SeniorIcon },
+    { key: 'women', name: t('pkg_women'), icon: WomanIcon },
+    { key: 'men', name: t('pkg_men'), icon: PersonIcon },
+    { key: 'child', name: t('pkg_child'), icon: ChildIcon },
+    { key: 'arthritis', name: t('pkg_arthritis'), icon: BoneIcon },
+    { key: 'cancer', name: t('pkg_cancer'), icon: RibbonIcon },
+    { key: 'heart', name: t('pkg_heart'), icon: HeartPulseIcon },
   ]
 
   return (
@@ -24,7 +54,7 @@ export default function Home() {
 
       <header className="home__hero">
         <div className="home__brand">
-          <DropletIcon />
+          <img src={logoIcon} alt="Plasma Care logo" className="home__logo" />
           <div>
             <h1>Plasma Care</h1>
             <p className="home__tagline">{t('tagline')}</p>
@@ -38,70 +68,190 @@ export default function Home() {
 
       <section className="home__services">
         <h2 className="home__section-title">{t('ourServices')}</h2>
-        <div className="home__grid">
-          {SERVICES.map((s) => (
-            <ServiceCard key={s.key} service={s} t={t} />
-          ))}
+        <Link to="/book/pathology" className="service-card service-card--live">
+          <div className="service-card__icon">
+            <TubeIcon />
+          </div>
+          <h3 className="service-card__name">{t('svc_pathology_name')}</h3>
+          <p className="service-card__desc">{t('svc_pathology_desc')}</p>
+          <span className="service-card__cta">{t('bookNow')}</span>
+        </Link>
+
+        <p className="home__also-label">{t('alsoAvailable')}</p>
+        <div className="home__chip-row">
+          {OTHER_SERVICES.map((s) => {
+            const Icon = s.icon
+            return (
+              <div key={s.key} className="service-chip" aria-disabled="true">
+                <Icon />
+                <span>{s.name}</span>
+              </div>
+            )
+          })}
         </div>
       </section>
 
+      <section className="home__why">
+        <h2 className="home__section-title">{t('whyChooseTitle')}</h2>
+        <div className="home__why-grid">
+          {WHY_CHOOSE.map((w) => {
+            const Icon = w.icon
+            return (
+              <div key={w.key} className="why-card">
+                <div className="why-card__icon">
+                  <Icon />
+                </div>
+                <h3 className="why-card__title">{w.title}</h3>
+                <p className="why-card__desc">{w.desc}</p>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="home__packages">
+        <h2 className="home__section-title">{t('healthPackagesTitle')}</h2>
+        <div className="home__packages-grid">
+          {PACKAGES.map((p) => {
+            const Icon = p.icon
+            return (
+              <div key={p.key} className="package-card">
+                <div className="package-card__icon">
+                  <Icon />
+                </div>
+                <span className="package-card__name">{p.name}</span>
+              </div>
+            )
+          })}
+        </div>
+        <p className="home__packages-note">{t('healthPackagesNote')}</p>
+      </section>
+
       <footer className="home__footer">
-        <p>{t('callWhatsapp')} <a href="tel:8112060205">8112060205</a></p>
+        <h2 className="home__section-title">{t('contactUs')}</h2>
+        <div className="contact-list">
+          <button type="button" className="contact-row" onClick={() => setShowContactSheet(true)}>
+            <PhoneIcon />
+            <span>{PHONE}</span>
+          </button>
+          <a className="contact-row" href={`mailto:${EMAIL}`}>
+            <MailIcon />
+            <span>{EMAIL}</span>
+          </a>
+          <a className="contact-row" href={INSTAGRAM_LINK} target="_blank" rel="noreferrer">
+            <InstagramIcon />
+            <span>{INSTAGRAM_HANDLE}</span>
+          </a>
+          <div className="contact-row contact-row--static">
+            <PinIcon />
+            <span>G13 K8 BDA Market Complex, Kalinga Nagar, Bhubaneswar – 751003</span>
+          </div>
+        </div>
       </footer>
+
+      {showContactSheet && (
+        <div className="contact-sheet__overlay" onClick={() => setShowContactSheet(false)}>
+          <div className="contact-sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="contact-sheet__title">{t('callOrWhatsapp')}</p>
+            <a className="contact-sheet__btn contact-sheet__btn--call" href={`tel:${PHONE}`}>
+              <PhoneIcon /> {t('callOption')}
+            </a>
+            <a
+              className="contact-sheet__btn contact-sheet__btn--whatsapp"
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <WhatsappIcon /> {t('whatsappOption')}
+            </a>
+            <button type="button" className="contact-sheet__cancel" onClick={() => setShowContactSheet(false)}>
+              {t('cancelOption')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function ServiceCard({ service, t }) {
-  const Icon = service.icon
-  const content = (
-    <>
-      <div className="service-card__icon">
-        <Icon />
-      </div>
-      <h3 className="service-card__name">{service.name}</h3>
-      <p className="service-card__desc">{service.desc}</p>
-      {!service.live && <span className="service-card__badge">{t('comingSoon')}</span>}
-      {service.live && <span className="service-card__cta">{t('bookNow')}</span>}
-    </>
-  )
-
-  if (service.live) {
-    return (
-      <Link to="/book/pathology" className="service-card service-card--live">
-        {content}
-      </Link>
-    )
-  }
-  return (
-    <div className="service-card service-card--disabled" aria-disabled="true">
-      {content}
-    </div>
-  )
-}
-
-function DropletIcon() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-      <path d="M12 2C12 2 5 11 5 15.5C5 19.09 8.13 22 12 22C15.87 22 19 19.09 19 15.5C19 11 12 2 12 2Z" fill="var(--red-600)" />
-    </svg>
-  )
-}
+/* ---------- Service / feature icons ---------- */
 function TubeIcon() {
   return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M9 2h6M10 3v12a2 2 0 004 0V3" /><path d="M9 12h6" /></svg>
 }
 function ScanIcon() {
-  return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
 }
 function DoctorIcon() {
-  return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="8" r="3" /><path d="M5 21c0-4 3-7 7-7s7 3 7 7" /></svg>
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="8" r="3" /><path d="M5 21c0-4 3-7 7-7s7 3 7 7" /></svg>
 }
 function BedIcon() {
-  return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M3 18v-6a2 2 0 012-2h14a2 2 0 012 2v6M3 18h18M3 18v2M21 18v2" /><path d="M7 10V7a1 1 0 011-1h3" /></svg>
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M3 18v-6a2 2 0 012-2h14a2 2 0 012 2v6M3 18h18M3 18v2M21 18v2" /><path d="M7 10V7a1 1 0 011-1h3" /></svg>
 }
 function PillIcon() {
-  return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-45 12 12)" /><path d="M9 9l6 6" /></svg>
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-45 12 12)" /><path d="M9 9l6 6" /></svg>
 }
 function ShieldIcon() {
-  return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" /></svg>
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" /></svg>
+}
+function ReportIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h3" /><path d="M8 3l1-1h6l1 1" /></svg>
+}
+function HomeCollectIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M3 11l9-7 9 7" /><path d="M5 10v9a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1v-9" /></svg>
+}
+function RupeeIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M6 4h12M6 8h12M6 4c4 0 7 1.8 7 4s-3 4-7 4h9M6 12l8 8" /></svg>
+}
+function ClockIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>
+}
+function HeartHandIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 20s-6.5-4.2-9-8.2C1.3 8.6 3 5 6.5 5c1.9 0 3.3 1 4 2.3.7-1.3 2.1-2.3 4-2.3C18 5 19.7 8.6 18 11.8 15.5 15.8 12 20 12 20z" /></svg>
+}
+function CheckHeartIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 20s-6.5-4.2-9-8.2C1.3 8.6 3 5 6.5 5c1.9 0 3.3 1 4 2.3.7-1.3 2.1-2.3 4-2.3C18 5 19.7 8.6 18 11.8 15.5 15.8 12 20 12 20z" /><path d="M9 12l2 2 4-4" stroke="var(--surface)" strokeWidth="1.6" /></svg>
+}
+
+/* ---------- Package icons ---------- */
+function PersonIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="7" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" /></svg>
+}
+function SeniorIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="8" cy="6" r="3" /><circle cx="17" cy="6" r="3" /><path d="M2 21c0-3.9 2.7-7 6-7s6 3.1 6 7M13 18l2-3 2 2 3-4" /></svg>
+}
+function WomanIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="4" /><path d="M12 10v6M9 21l3-5 3 5M8 14h8" /></svg>
+}
+function ChildIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="3" /><path d="M12 9v6M8 21l4-6 4 6M9 13h6" /></svg>
+}
+function BoneIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M5 12l14 0" /><circle cx="5" cy="9" r="2" /><circle cx="5" cy="15" r="2" /><circle cx="19" cy="9" r="2" /><circle cx="19" cy="15" r="2" /></svg>
+}
+function RibbonIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="3" /><path d="M10.5 8.5L6 20l6-3 6 3-4.5-11.5" /></svg>
+}
+function HeartPulseIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 20s-7-4.5-9-8.5C1.5 8 3 4.5 6.5 4.5c2 0 3.3 1.1 4 2.3.7-1.2 2-2.3 4-2.3 3.5 0 5 3.5 3.5 7-.4.8-1 1.6-1.6 2.4" /><path d="M3 12h3l1.5-3L10 15l2-6 1.5 3H21" /></svg>
+}
+
+/* ---------- Contact icons ---------- */
+function PhoneIcon() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2C9.5 21 3 14.5 3 6a2 2 0 012-2z" /></svg>
+}
+function MailIcon() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>
+}
+function InstagramIcon() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg>
+}
+function PinIcon() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 21s7-6.5 7-11.5A7 7 0 105 9.5C5 14.5 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.3" /></svg>
+}
+function WhatsappIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2a10 10 0 00-8.6 15L2 22l5.2-1.4A10 10 0 1012 2zm5.6 14.3c-.2.7-1.4 1.3-2 1.4-.5.1-1.1.1-1.8-.1-.4-.1-1-.3-1.7-.6-2.9-1.3-4.8-4.2-5-4.4-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.3-.3.6-.3.8-.3h.6c.2 0 .4 0 .6.5.2.5.7 1.8.8 1.9.1.2.1.3 0 .5-.1.2-.1.3-.3.5-.1.2-.3.4-.4.5-.1.2-.3.3-.1.6.2.3.9 1.5 1.9 2.4 1.3 1.2 2.4 1.5 2.7 1.7.3.2.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.7-.1.3.1 1.7.8 2 .9.3.2.5.2.6.3.1.2.1.9-.1 1.6z" />
+    </svg>
+  )
 }

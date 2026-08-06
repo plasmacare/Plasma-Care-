@@ -10,6 +10,16 @@ import './PathologyBooking.css'
 
 const STEP = { TESTS: 0, TYPE: 1, LOCATION: 2, SCHEDULE: 3, DETAILS: 4, VERIFY: 5, DONE: 6 }
 
+// Formats a Date as YYYY-MM-DD using LOCAL date parts, not UTC — using
+// toISOString() here would shift the date back a day for anyone booking
+// between 12:00 AM and 5:30 AM IST, since IST is UTC+5:30.
+function formatLocalDate(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function nextDays(n) {
   return Array.from({ length: n }, (_, i) => {
     const d = new Date()
@@ -47,7 +57,7 @@ export default function PathologyBooking() {
 
   useEffect(() => {
     if (date) {
-      const iso = date.toISOString().slice(0, 10)
+      const iso = formatLocalDate(date)
       fetchTimeSlots(iso).then(setSlots).catch(() => setSlots([]))
       setSlotId(null)
     }
@@ -124,7 +134,7 @@ export default function PathologyBooking() {
         selectedPackages,
         selectedTests,
         totalAmount: total,
-        scheduledDate: date.toISOString().slice(0, 10),
+        scheduledDate: formatLocalDate(date),
         slotId,
         address: location,
       })
