@@ -38,7 +38,16 @@ export default function LocationPicker({ onConfirm }) {
   const placePin = useCallback((lat, lng) => {
     setCoords({ lat, lng })
     if (markerInstance.current) markerInstance.current.setLatLng([lat, lng])
-    if (mapInstance.current) mapInstance.current.setView([lat, lng], 16)
+    if (mapInstance.current) {
+      // Guards against Leaflet caching a stale container size (leaves the
+      // map mostly grey after a big jump, e.g. from geolocation) — force it
+      // to re-measure right before moving the view.
+      mapInstance.current.invalidateSize()
+      mapInstance.current.setView([lat, lng], 16)
+      // Some mobile browsers report the correct size a frame late; re-check
+      // once more after the view settles so no tiles are left unrendered.
+      setTimeout(() => mapInstance.current && mapInstance.current.invalidateSize(), 250)
+    }
 
     reverseGeocode(lat, lng)
       .then((result) => {
@@ -75,7 +84,15 @@ export default function LocationPicker({ onConfirm }) {
     setReady(true)
     placePin(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng)
 
+    // Force a re-measure once the browser has actually painted the map
+    // container — fixes a common Leaflet issue where it initializes with
+    // the wrong size and leaves most tiles blank/grey.
+    requestAnimationFrame(() => map.invalidateSize())
+    const resizeHandler = () => map.invalidateSize()
+    window.addEventListener('resize', resizeHandler)
+
     return () => {
+      window.removeEventListener('resize', resizeHandler)
       map.remove()
       mapInstance.current = null
     }
@@ -154,6 +171,12 @@ export default function LocationPicker({ onConfirm }) {
       <div className="location-picker__map-wrap">
         <div ref={mapRef} className="location-picker__map" />
         {!ready && <div className="location-picker__loading">Map load ho raha hai…</div>}
+        {locating && (
+          <div className="location-picker__loading location-picker__loading--overlay">
+            <span className="location-picker__spinner" />
+            {t('locating')}
+          </div>
+        )}
         <button className="location-picker__locate-btn" onClick={useMyLocation} disabled={locating} type="button">
           <PinIcon />
           {locating ? t('locating') : t('useMyLocation')}

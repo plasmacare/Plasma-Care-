@@ -58,12 +58,30 @@
   background: var(--paper);
   font-size: 13px;
   color: var(--slate);
+  z-index: 5;
+}
+.location-picker__loading--overlay {
+  background: rgba(245, 243, 238, 0.85);
+  gap: 8px;
+  font-weight: 600;
+}
+.location-picker__spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  border-top-color: var(--red-600);
+  animation: lp-spin 0.7s linear infinite;
+}
+@keyframes lp-spin {
+  to { transform: rotate(360deg); }
 }
 .location-picker__locate-btn {
   position: absolute;
   bottom: 12px;
   left: 12px;
   right: 12px;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
