@@ -21,34 +21,17 @@ export async function fetchTests() {
 }
 
 export async function fetchTimeSlots(date) {
-  // time_slots is a reusable daily template (same 15 slots every day).
-  // Availability per date is computed live from existing bookings —
-  // no pre-generated rows needed for future dates.
-  const { data: slots, error: slotsError } = await supabase
+  // time_slots rows are per-date (slot_date), with booked_count tracked
+  // directly on the row — no separate aggregation needed.
+  const { data: slots, error } = await supabase
     .from('time_slots')
     .select('*')
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true })
-  if (slotsError) throw slotsError
-
-  const { data: dayBookings, error: bookingsError } = await supabase
-    .from('bookings')
-    .select('slot_id')
-    .eq('scheduled_date', date)
-    .neq('status', 'cancelled')
-  if (bookingsError) throw bookingsError
-
-  const bookedCountBySlot = {}
-  for (const b of dayBookings) {
-    bookedCountBySlot[b.slot_id] = (bookedCountBySlot[b.slot_id] || 0) + 1
-  }
+    .eq('slot_date', date)
+    .order('start_time', { ascending: true })
+  if (error) throw error
 
   // max_capacity of 0 means unlimited (admin setting) — always available.
-  return slots.filter((s) => {
-    if (s.max_capacity === 0) return true
-    const booked = bookedCountBySlot[s.id] || 0
-    return booked < s.max_capacity
-  })
+  return slots.filter((s) => s.max_capacity === 0 || (s.booked_count || 0) < s.max_capacity)
 }
 
 export async function createBooking({
@@ -79,6 +62,15 @@ export async function createBooking({
     .single()
 
   if (bookingError) throw bookingError
+
+  // Atomically bump the slot's booked_count (a plain client-side
+  // read-then-write here would race under concurrent bookings).
+  const { error: slotError } = await supabase.rpc('increment_slot_booking', { p_slot_id: slotId })
+  if (slotError) {
+    // Booking already exists at this point — don't fail the whole flow
+    // over a counter update; just log it for now.
+    console.error('Could not update slot booked_count:', slotError)
+  }
 
   if (bookingType === 'home_collection' && address) {
     const { error: addressError } = await supabase.from('addresses').insert({
