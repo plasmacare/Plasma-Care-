@@ -28,6 +28,18 @@ same 3 variables in their dashboard's "Environment Variables" section:
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_MAPPLS_API_KEY`
 
+## Database setup
+
+Run `supabase/slot_capacity_functions.sql` once in the Supabase SQL Editor
+(if you haven't already for the admin panel). It adds two small functions
+so a slot's booked-count updates atomically when a booking is made — this
+is what stops two people from double-booking the same slot at the same time.
+
+Also run `supabase/fix_public_access.sql` once — it restores the public
+(non-logged-in) read/write access this app needs on packages, tests,
+slots, bookings, and addresses, which got locked down when RLS was
+enabled for the admin panel.
+
 Never put the Supabase **service_role** key or the 2Factor key in this app — they
 must only live server-side (in the Edge Functions we build next).
 
