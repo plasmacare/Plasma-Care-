@@ -1,5 +1,24 @@
 import { supabase } from './supabase'
 
+/**
+ * Returns the current wall-clock date/time in IST (Asia/Kolkata),
+ * regardless of the device's own timezone — so slot cutoffs behave the
+ * same for every customer no matter where their phone thinks it is.
+ */
+function nowIST() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(new Date())
+  const get = (type) => parts.find((p) => p.type === type).value
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    time: `${get('hour')}:${get('minute')}:${get('second')}`,
+  }
+}
+
+
 export async function fetchPackages() {
   const { data, error } = await supabase
     .from('packages')
@@ -31,7 +50,15 @@ export async function fetchTimeSlots(date) {
   if (error) throw error
 
   // max_capacity of 0 means unlimited (admin setting) — always available.
-  return slots.filter((s) => s.max_capacity === 0 || (s.booked_count || 0) < s.max_capacity)
+  const { date: istDate, time: istTime } = nowIST()
+  return slots.filter((s) => {
+    const full = s.max_capacity !== 0 && (s.booked_count || 0) >= s.max_capacity
+    if (full) return false
+    // If this is today (in IST), hide slots whose start time has already
+    // passed — they auto-disable as the clock moves, no admin action needed.
+    if (date === istDate && s.start_time <= istTime) return false
+    return true
+  })
 }
 
 export async function createBooking({
@@ -93,3 +120,28 @@ export async function markBookingVerified(bookingId) {
     .eq('id', bookingId)
   if (error) throw error
 }
+
+export async function savePatientDetails(bookingId, { name, age, gender, bloodGroup }) {
+  const { error } = await supabase
+    .from('bookings')
+    .update({
+      patient_name: name || null,
+      patient_age: age ? Number(age) : null,
+      patient_gender: gender || null,
+      patient_blood_group: bloodGroup || null,
+    })
+    .eq('id', bookingId)
+  if (error) throw error
+}
+
+/** Booking history for the account page — everything under this phone number. */
+export async function fetchBookingsByPhone(phone) {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('customer_phone', phone)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
