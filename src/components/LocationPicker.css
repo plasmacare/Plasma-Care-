@@ -77,11 +77,8 @@
   to { transform: rotate(360deg); }
 }
 .location-picker__locate-btn {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
-  z-index: 10;
+  width: 100%;
+  margin-top: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -89,7 +86,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  padding: 10px;
+  padding: 11px;
   font-size: 13px;
   font-weight: 600;
   color: var(--navy-950);

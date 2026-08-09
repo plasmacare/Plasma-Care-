@@ -177,11 +177,12 @@ export default function LocationPicker({ onConfirm }) {
             {t('locating')}
           </div>
         )}
-        <button className="location-picker__locate-btn" onClick={useMyLocation} disabled={locating} type="button">
-          <PinIcon />
-          {locating ? t('locating') : t('useMyLocation')}
-        </button>
       </div>
+
+      <button className="location-picker__locate-btn" onClick={useMyLocation} disabled={locating} type="button">
+        <PinIcon />
+        {locating ? t('locating') : t('useMyLocation')}
+      </button>
 
       <div className="location-picker__form">
         <label>
