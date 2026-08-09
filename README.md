@@ -40,6 +40,27 @@ Also run `supabase/fix_public_access.sql` once — it restores the public
 slots, bookings, and addresses, which got locked down when RLS was
 enabled for the admin panel.
 
+Also run `supabase/patient_details.sql` once — it adds the patient
+name/age/gender/blood group fields collected right after OTP verification.
+
+## What's new
+
+- **My Account** (`/account`) — a customer who's completed OTP once on
+  this device is auto-logged-in (their phone number is remembered
+  locally); from Home, tap "My Account" to see booking history and any
+  uploaded report. On a new device, they verify their phone via OTP again
+  to pull up their history — no password, no separate signup step.
+- **Patient details** — right after OTP verification, the flow now asks
+  for the patient's name, age, gender, and blood group (the patient may
+  not be the same person who booked). This can be skipped and filled in
+  later by calling in.
+- **IST-aware slot cutoffs** — a time slot for today automatically stops
+  being offered once its start time has passed, based on real IST clock
+  time (not the customer's device clock, which can't be trusted). The
+  slot list also silently refreshes every minute while someone's on the
+  date/slot step, so a slot that just crossed its cutoff disappears on
+  its own.
+
 Never put the Supabase **service_role** key or the 2Factor key in this app — they
 must only live server-side (in the Edge Functions we build next).
 
