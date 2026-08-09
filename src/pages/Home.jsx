@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import PulseDivider from '../components/PulseDivider'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useLanguage } from '../lib/i18n.jsx'
-import logoIcon from '../assets/logo-icon.png'
+import logoFull from '../assets/logo-full.png'
 import './Home.css'
 
 const PHONE = '8112060205'
@@ -35,17 +35,6 @@ export default function Home() {
     { key: 'quality', title: t('why_quality_title'), desc: t('why_quality_desc'), icon: CheckHeartIcon },
   ]
 
-  const PACKAGES = [
-    { key: 'fullbody', name: t('pkg_fullbody'), icon: PersonIcon },
-    { key: 'senior', name: t('pkg_senior'), icon: SeniorIcon },
-    { key: 'women', name: t('pkg_women'), icon: WomanIcon },
-    { key: 'men', name: t('pkg_men'), icon: PersonIcon },
-    { key: 'child', name: t('pkg_child'), icon: ChildIcon },
-    { key: 'arthritis', name: t('pkg_arthritis'), icon: BoneIcon },
-    { key: 'cancer', name: t('pkg_cancer'), icon: RibbonIcon },
-    { key: 'heart', name: t('pkg_heart'), icon: HeartPulseIcon },
-  ]
-
   return (
     <div className="home">
       <div className="home__top-bar">
@@ -57,16 +46,9 @@ export default function Home() {
       </div>
 
       <header className="home__hero">
-        <div className="home__brand">
-          <img src={logoIcon} alt="Plasma Care logo" className="home__logo" />
-          <div>
-            <h1>Plasma Care</h1>
-            <p className="home__tagline">{t('tagline')}</p>
-          </div>
-        </div>
-        <p className="home__sub">
-          {t('unitOf')} · G13 K8 BDA Market Complex, Kalinga Nagar
-        </p>
+        <img src={logoFull} alt="Plasma Care — A Unit of Trivana Ventures LLP" className="home__logo-full" />
+        <p className="home__tagline">{t('tagline')}</p>
+        <p className="home__sub">G13 K8 BDA Market Complex, Kalinga Nagar</p>
         <PulseDivider />
       </header>
 
@@ -113,24 +95,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="home__packages">
-        <h2 className="home__section-title">{t('healthPackagesTitle')}</h2>
-        <div className="home__packages-grid">
-          {PACKAGES.map((p) => {
-            const Icon = p.icon
-            return (
-              <div key={p.key} className="package-card">
-                <div className="package-card__icon">
-                  <Icon />
-                </div>
-                <span className="package-card__name">{p.name}</span>
-              </div>
-            )
-          })}
-        </div>
-        <p className="home__packages-note">{t('healthPackagesNote')}</p>
-      </section>
-
       <footer className="home__footer">
         <h2 className="home__section-title">{t('contactUs')}</h2>
         <div className="contact-list">
@@ -151,6 +115,9 @@ export default function Home() {
             <span>G13 K8 BDA Market Complex, Kalinga Nagar, Bhubaneswar – 751003</span>
           </div>
         </div>
+        <p className="home__copyright">
+          © {new Date().getFullYear()} Plasma Care, a unit of Trivana Ventures LLP. All rights reserved.
+        </p>
       </footer>
 
       {showContactSheet && (
@@ -214,29 +181,6 @@ function HeartHandIcon() {
 }
 function CheckHeartIcon() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 20s-6.5-4.2-9-8.2C1.3 8.6 3 5 6.5 5c1.9 0 3.3 1 4 2.3.7-1.3 2.1-2.3 4-2.3C18 5 19.7 8.6 18 11.8 15.5 15.8 12 20 12 20z" /><path d="M9 12l2 2 4-4" stroke="var(--surface)" strokeWidth="1.6" /></svg>
-}
-
-/* ---------- Package icons ---------- */
-function PersonIcon() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="7" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" /></svg>
-}
-function SeniorIcon() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="8" cy="6" r="3" /><circle cx="17" cy="6" r="3" /><path d="M2 21c0-3.9 2.7-7 6-7s6 3.1 6 7M13 18l2-3 2 2 3-4" /></svg>
-}
-function WomanIcon() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="4" /><path d="M12 10v6M9 21l3-5 3 5M8 14h8" /></svg>
-}
-function ChildIcon() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="3" /><path d="M12 9v6M8 21l4-6 4 6M9 13h6" /></svg>
-}
-function BoneIcon() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M5 12l14 0" /><circle cx="5" cy="9" r="2" /><circle cx="5" cy="15" r="2" /><circle cx="19" cy="9" r="2" /><circle cx="19" cy="15" r="2" /></svg>
-}
-function RibbonIcon() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="3" /><path d="M10.5 8.5L6 20l6-3 6 3-4.5-11.5" /></svg>
-}
-function HeartPulseIcon() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 20s-7-4.5-9-8.5C1.5 8 3 4.5 6.5 4.5c2 0 3.3 1.1 4 2.3.7-1.2 2-2.3 4-2.3 3.5 0 5 3.5 3.5 7-.4.8-1 1.6-1.6 2.4" /><path d="M3 12h3l1.5-3L10 15l2-6 1.5 3H21" /></svg>
 }
 
 /* ---------- Contact icons ---------- */

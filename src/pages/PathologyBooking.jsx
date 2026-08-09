@@ -315,6 +315,17 @@ function FooterButton({ step, itemCount, bookingType, date, slotId, busy, onTest
 }
 
 function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, t }) {
+  const HEALTH_PACKAGES = [
+    { key: 'fullbody', name: t('pkg_fullbody'), icon: PersonIcon },
+    { key: 'senior', name: t('pkg_senior'), icon: SeniorIcon },
+    { key: 'women', name: t('pkg_women'), icon: WomanIcon },
+    { key: 'men', name: t('pkg_men'), icon: PersonIcon },
+    { key: 'child', name: t('pkg_child'), icon: ChildIcon },
+    { key: 'arthritis', name: t('pkg_arthritis'), icon: BoneIcon },
+    { key: 'cancer', name: t('pkg_cancer'), icon: RibbonIcon },
+    { key: 'heart', name: t('pkg_heart'), icon: HeartPulseIcon },
+  ]
+
   return (
     <div className="tests-step">
       <h2 className="section-title">{t('packages')}</h2>
@@ -344,6 +355,22 @@ function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, t
           </label>
         ))}
       </div>
+
+      <h2 className="section-title">{t('healthPackagesTitle')}</h2>
+      <div className="home__packages-grid">
+        {HEALTH_PACKAGES.map((p) => {
+          const Icon = p.icon
+          return (
+            <div key={p.key} className="package-card">
+              <div className="package-card__icon">
+                <Icon />
+              </div>
+              <span className="package-card__name">{p.name}</span>
+            </div>
+          )
+        })}
+      </div>
+      <p className="home__packages-note">{t('healthPackagesNote')}</p>
     </div>
   )
 }
@@ -534,4 +561,27 @@ function LabIcon() {
 }
 function CheckIcon() {
   return <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5" /></svg>
+}
+
+/* ---------- Health package showcase icons ---------- */
+function PersonIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="7" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" /></svg>
+}
+function SeniorIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="8" cy="6" r="3" /><circle cx="17" cy="6" r="3" /><path d="M2 21c0-3.9 2.7-7 6-7s6 3.1 6 7M13 18l2-3 2 2 3-4" /></svg>
+}
+function WomanIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="4" /><path d="M12 10v6M9 21l3-5 3 5M8 14h8" /></svg>
+}
+function ChildIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="3" /><path d="M12 9v6M8 21l4-6 4 6M9 13h6" /></svg>
+}
+function BoneIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M5 12l14 0" /><circle cx="5" cy="9" r="2" /><circle cx="5" cy="15" r="2" /><circle cx="19" cy="9" r="2" /><circle cx="19" cy="15" r="2" /></svg>
+}
+function RibbonIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="6" r="3" /><path d="M10.5 8.5L6 20l6-3 6 3-4.5-11.5" /></svg>
+}
+function HeartPulseIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 20s-7-4.5-9-8.5C1.5 8 3 4.5 6.5 4.5c2 0 3.3 1.1 4 2.3.7-1.2 2-2.3 4-2.3 3.5 0 5 3.5 3.5 7-.4.8-1 1.6-1.6 2.4" /><path d="M3 12h3l1.5-3L10 15l2-6 1.5 3H21" /></svg>
 }
