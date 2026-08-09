@@ -139,3 +139,26 @@
   border-radius: 20px;
 }
 .confirmation-screen__note { font-size: 13.5px; color: var(--slate); max-width: 320px; margin: 8px 0 20px; }
+
+/* ---------- Patient details step ---------- */
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pill {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy-800);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.pill.is-selected {
+  background: var(--navy-950);
+  color: #fff;
+  border-color: var(--navy-950);
+}

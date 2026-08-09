@@ -4,11 +4,12 @@ import StepTracker from '../components/StepTracker'
 import LocationPicker from '../components/LocationPicker'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useLanguage } from '../lib/i18n.jsx'
-import { fetchPackages, fetchTests, fetchTimeSlots, createBooking, markBookingVerified } from '../lib/booking'
+import { fetchPackages, fetchTests, fetchTimeSlots, createBooking, markBookingVerified, savePatientDetails } from '../lib/booking'
 import { sendOtp, verifyOtp } from '../lib/otp'
+import { setSession } from '../lib/session'
 import './PathologyBooking.css'
 
-const STEP = { TESTS: 0, TYPE: 1, LOCATION: 2, SCHEDULE: 3, DETAILS: 4, VERIFY: 5, DONE: 6 }
+const STEP = { TESTS: 0, TYPE: 1, LOCATION: 2, SCHEDULE: 3, DETAILS: 4, VERIFY: 5, PATIENT: 6, DONE: 7 }
 
 // Formats a Date as YYYY-MM-DD using LOCAL date parts, not UTC — using
 // toISOString() here would shift the date back a day for anyone booking
@@ -49,6 +50,10 @@ export default function PathologyBooking() {
   const [otpError, setOtpError] = useState('')
   const [busy, setBusy] = useState(false)
   const [bookingId, setBookingId] = useState(null)
+  const [patientName, setPatientName] = useState('')
+  const [patientAge, setPatientAge] = useState('')
+  const [patientGender, setPatientGender] = useState('')
+  const [patientBloodGroup, setPatientBloodGroup] = useState('')
 
   useEffect(() => {
     fetchPackages().then(setPackages).catch(() => {})
@@ -62,6 +67,18 @@ export default function PathologyBooking() {
       setSlotId(null)
     }
   }, [date])
+
+  // Re-check slot availability every minute while the user is picking a
+  // slot — so a slot that just crossed its IST cutoff (or filled up)
+  // disappears on its own instead of only refreshing on next date tap.
+  useEffect(() => {
+    if (!date || step !== STEP.SCHEDULE) return
+    const iso = formatLocalDate(date)
+    const id = setInterval(() => {
+      fetchTimeSlots(iso).then(setSlots).catch(() => {})
+    }, 60000)
+    return () => clearInterval(id)
+  }, [date, step])
 
   const total = useMemo(() => {
     const pkgSum = packages.filter((p) => selectedPackages.includes(p.id)).reduce((s, p) => s + Number(p.price), 0)
@@ -139,12 +156,32 @@ export default function PathologyBooking() {
         address: location,
       })
       await markBookingVerified(booking.id)
+      setSession(phone, name)
       setBookingId(booking.id)
-      setStep(STEP.DONE)
+      setPatientName(name)
+      setStep(STEP.PATIENT)
     } catch (e) {
       setOtpError('OTP galat hai ya expire ho gaya. Dobara try karein.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function submitPatientDetails() {
+    setBusy(true)
+    try {
+      await savePatientDetails(bookingId, {
+        name: patientName,
+        age: patientAge,
+        gender: patientGender,
+        bloodGroup: patientBloodGroup,
+      })
+    } catch {
+      // Booking already exists and is confirmed — don't block the
+      // confirmation screen over this being saved.
+    } finally {
+      setBusy(false)
+      setStep(STEP.DONE)
     }
   }
 
@@ -155,9 +192,12 @@ export default function PathologyBooking() {
   return (
     <div className="page">
       <div className="page-header">
-        <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
-          <BackIcon />
-        </button>
+        {step !== STEP.PATIENT && (
+          <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
+            <BackIcon />
+          </button>
+        )}
+        {step === STEP.PATIENT && <div className="page-header__spacer" />}
         <h1>{t('bookingTitle')}</h1>
         <div className="page-header__spacer" />
         <LanguageSwitcher />
@@ -208,7 +248,17 @@ export default function PathologyBooking() {
         />
       )}
 
-      {step !== STEP.LOCATION && (
+      {step === STEP.PATIENT && (
+        <PatientDetailsStep
+          name={patientName} setName={setPatientName}
+          age={patientAge} setAge={setPatientAge}
+          gender={patientGender} setGender={setPatientGender}
+          bloodGroup={patientBloodGroup} setBloodGroup={setPatientBloodGroup}
+          t={t}
+        />
+      )}
+
+      {step !== STEP.LOCATION && step !== STEP.PATIENT && (
         <div className="sticky-footer">
           <div className="sticky-footer__summary">
             <div className="sticky-footer__amount">₹{total || 0}</div>
@@ -228,6 +278,17 @@ export default function PathologyBooking() {
             onVerify={confirmBooking}
             t={t}
           />
+        </div>
+      )}
+
+      {step === STEP.PATIENT && (
+        <div className="sticky-footer">
+          <button className="btn btn--ghost" disabled={busy} onClick={() => setStep(STEP.DONE)}>
+            {t('skipForNow')}
+          </button>
+          <button className="btn btn--primary" disabled={busy || !patientName.trim()} onClick={submitPatientDetails}>
+            {busy ? t('saving') : t('saveContinue')}
+          </button>
         </div>
       )}
     </div>
@@ -392,7 +453,64 @@ function VerifyStep({ phone, otpCode, setOtpCode, onResend, error, t }) {
   )
 }
 
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown']
+
+function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t }) {
+  return (
+    <div className="details-step">
+      <h2 className="section-title">{t('patientDetailsTitle')}</h2>
+      <p className="details-step__note">{t('patientDetailsNote')}</p>
+      <div className="field">
+        <label>{t('patientName')}</label>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('fullNamePlaceholder')} />
+      </div>
+      <div className="field">
+        <label>{t('patientAge')}</label>
+        <input
+          type="number"
+          min="0"
+          max="120"
+          value={age}
+          onChange={(e) => setAge(e.target.value.slice(0, 3))}
+          placeholder={t('patientAgePlaceholder')}
+        />
+      </div>
+      <div className="field">
+        <label>{t('patientGender')}</label>
+        <div className="pill-group">
+          {['male', 'female', 'other'].map((g) => (
+            <button
+              key={g}
+              type="button"
+              className={`pill ${gender === g ? 'is-selected' : ''}`}
+              onClick={() => setGender(g)}
+            >
+              {t(`gender_${g}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label>{t('patientBloodGroup')}</label>
+        <div className="pill-group">
+          {BLOOD_GROUPS.map((bg) => (
+            <button
+              key={bg}
+              type="button"
+              className={`pill ${bloodGroup === bg ? 'is-selected' : ''}`}
+              onClick={() => setBloodGroup(bg)}
+            >
+              {bg}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ConfirmationScreen({ bookingId, onHome, t }) {
+  const navigate = useNavigate()
   return (
     <div className="page confirmation-screen">
       <div className="confirmation-screen__icon"><CheckIcon /></div>
@@ -400,6 +518,7 @@ function ConfirmationScreen({ bookingId, onHome, t }) {
       <p className="confirmation-screen__id">{t('bookingId')}: {bookingId?.slice(0, 8).toUpperCase()}</p>
       <p className="confirmation-screen__note">{t('confirmationNote')} 8112060205</p>
       <button className="btn btn--primary" onClick={onHome}>{t('backToHome')}</button>
+      <button className="btn btn--ghost" onClick={() => navigate('/account')}>{t('viewMyBookings')}</button>
     </div>
   )
 }
