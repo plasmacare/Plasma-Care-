@@ -1,7 +1,9 @@
 # Plasma Care — Customer Booking App
 
 React + Vite + Supabase. Pathology booking flow (home collection or lab visit),
-with WhatsApp/Call OTP verification. Other 5 services are shown as "Coming Soon".
+date-only scheduling, OTP verification (NinzaSMS + 2Factor), and an optional
+prescription-photo upload for anyone unsure which tests to pick. Other 5
+services are shown as "Coming Soon".
 
 ## Run locally
 
@@ -30,46 +32,50 @@ same 3 variables in their dashboard's "Environment Variables" section:
 
 ## Database setup
 
-Run `supabase/slot_capacity_functions.sql` once in the Supabase SQL Editor
-(if you haven't already for the admin panel). It adds two small functions
-so a slot's booked-count updates atomically when a booking is made — this
-is what stops two people from double-booking the same slot at the same time.
+Run these once in the Supabase SQL Editor, in this order (skip any you've
+already run for the admin panel):
 
-Also run `supabase/fix_public_access.sql` once — it restores the public
-(non-logged-in) read/write access this app needs on packages, tests,
-slots, bookings, and addresses, which got locked down when RLS was
-enabled for the admin panel.
+1. `supabase/fix_public_access.sql` — public (non-logged-in) read/write
+   access this app needs on packages, tests, bookings, and addresses.
+2. `supabase/patient_details.sql` — patient name/age/gender/blood group
+   fields, collected right after OTP verification.
+3. `supabase/prescription_and_no_slots.sql` — prescription photo upload
+   fields + storage bucket, and makes `slot_id` nullable (booking is
+   date-only now, no time slot).
 
-Also run `supabase/patient_details.sql` once — it adds the patient
-name/age/gender/blood group fields collected right after OTP verification.
+`supabase/slot_capacity_functions.sql` is no longer needed for new
+setups — it's left in place only because older deployments may already
+depend on it.
 
-## What's new
+## OTP setup (NinzaSMS + 2Factor)
+
+See `supabase/DEPLOY_OTP.md` for the full walkthrough. Short version:
+
+- Default send, and "Resend via WhatsApp" / "Resend via SMS" → **NinzaSMS**
+- "Get OTP via Call instead" → **2Factor** (kept only for this, since
+  Ninza has no voice route)
+
+Both API keys are Edge Function secrets — never in this frontend app.
+
+## What's here
 
 - **My Account** (`/account`) — a customer who's completed OTP once on
   this device is auto-logged-in (their phone number is remembered
   locally); from Home, tap "My Account" to see booking history and any
   uploaded report. On a new device, they verify their phone via OTP again
   to pull up their history — no password, no separate signup step.
-- **Patient details** — right after OTP verification, the flow now asks
-  for the patient's name, age, gender, and blood group (the patient may
-  not be the same person who booked). This can be skipped and filled in
-  later by calling in.
-- **IST-aware slot cutoffs** — a time slot for today automatically stops
-  being offered once its start time has passed, based on real IST clock
-  time (not the customer's device clock, which can't be trusted). The
-  slot list also silently refreshes every minute while someone's on the
-  date/slot step, so a slot that just crossed its cutoff disappears on
-  its own.
-
-Never put the Supabase **service_role** key or the 2Factor key in this app — they
-must only live server-side (in the Edge Functions we build next).
-
-## ⚠️ Not yet functional — needs the OTP backend
-
-The booking flow calls `send-otp` and `verify-otp` — these are Supabase Edge
-Functions that don't exist yet. That's the next build step: a small server-side
-function that holds the 2Factor API key and actually sends/checks the WhatsApp
-OTP. Until that's deployed, "Send OTP" will fail.
+- **Patient details** — right after OTP verification, the flow asks for
+  the patient's name, age, gender, and blood group (the patient may not
+  be the same person who booked). Can be skipped and filled in later.
+- **Prescription photo upload** — on the test-selection step, anyone
+  unsure which tests their doctor wrote down can upload a photo instead
+  of picking tests manually. It's compressed in-browser before upload
+  (resized + re-encoded as JPEG) so it doesn't eat into storage or take
+  forever on a slow connection. The admin panel shows the photo and lets
+  staff note down what it says.
+- **Date-only scheduling** — no time slot picker; the confirmation screen
+  tells the customer the collection window (6:00 AM – 9:00 PM) and that
+  staff will call to confirm an exact time.
 
 ## Mappls note
 
@@ -80,6 +86,6 @@ uses the same static key and should work as-is.
 
 ## What's next
 
-1. Deploy `send-otp` / `verify-otp` Edge Functions (2Factor integration)
-2. Admin panel (separate app) — bookings dashboard, staff assignment
-3. Staff panel (separate app) — home-visit & in-store task views
+1. Staff panel (separate app) — home-visit & in-store task views
+2. Confirm the NinzaSMS request/response shape against their docs once
+   there's real delivery volume (see `supabase/DEPLOY_OTP.md`)
