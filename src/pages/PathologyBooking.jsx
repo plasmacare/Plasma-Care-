@@ -4,7 +4,7 @@ import StepTracker from '../components/StepTracker'
 import LocationPicker from '../components/LocationPicker'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useLanguage } from '../lib/i18n.jsx'
-import { fetchPackages, fetchTests, fetchTimeSlots, createBooking, markBookingVerified, savePatientDetails } from '../lib/booking'
+import { fetchPackages, fetchTests, createBooking, markBookingVerified, savePatientDetails, uploadPrescription } from '../lib/booking'
 import { sendOtp, verifyOtp } from '../lib/otp'
 import { setSession } from '../lib/session'
 import './PathologyBooking.css'
@@ -41,11 +41,10 @@ export default function PathologyBooking() {
   const [bookingType, setBookingType] = useState(null)
   const [location, setLocation] = useState(null)
   const [date, setDate] = useState(null)
-  const [slots, setSlots] = useState([])
-  const [slotId, setSlotId] = useState(null)
+  const [prescriptionFile, setPrescriptionFile] = useState(null)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [otpChannel, setOtpChannel] = useState('whatsapp')
+  const [otpChannel] = useState('sms')
   const [otpCode, setOtpCode] = useState('')
   const [otpError, setOtpError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -60,26 +59,6 @@ export default function PathologyBooking() {
     fetchTests().then(setTests).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (date) {
-      const iso = formatLocalDate(date)
-      fetchTimeSlots(iso).then(setSlots).catch(() => setSlots([]))
-      setSlotId(null)
-    }
-  }, [date])
-
-  // Re-check slot availability every minute while the user is picking a
-  // slot — so a slot that just crossed its IST cutoff (or filled up)
-  // disappears on its own instead of only refreshing on next date tap.
-  useEffect(() => {
-    if (!date || step !== STEP.SCHEDULE) return
-    const iso = formatLocalDate(date)
-    const id = setInterval(() => {
-      fetchTimeSlots(iso).then(setSlots).catch(() => {})
-    }, 60000)
-    return () => clearInterval(id)
-  }, [date, step])
-
   const total = useMemo(() => {
     const pkgSum = packages.filter((p) => selectedPackages.includes(p.id)).reduce((s, p) => s + Number(p.price), 0)
     const testSum = tests.filter((t) => selectedTests.includes(t.id)).reduce((s, t) => s + Number(t.price), 0)
@@ -87,10 +66,11 @@ export default function PathologyBooking() {
   }, [packages, tests, selectedPackages, selectedTests])
 
   const itemCount = selectedPackages.length + selectedTests.length
+  const canProceedFromTests = itemCount > 0 || !!prescriptionFile
 
   const stepLabels = bookingType === 'lab_visit'
-    ? [t('step_tests'), t('step_type'), t('step_slot'), t('step_details'), t('step_verify')]
-    : [t('step_tests'), t('step_type'), t('step_location'), t('step_slot'), t('step_details'), t('step_verify')]
+    ? [t('step_tests'), t('step_type'), t('step_date'), t('step_details'), t('step_verify')]
+    : [t('step_tests'), t('step_type'), t('step_location'), t('step_date'), t('step_details'), t('step_verify')]
 
   const visualStep = bookingType === 'lab_visit' && step >= STEP.LOCATION ? step - 1 : step
 
@@ -152,10 +132,17 @@ export default function PathologyBooking() {
         selectedTests,
         totalAmount: total,
         scheduledDate: formatLocalDate(date),
-        slotId,
         address: location,
       })
       await markBookingVerified(booking.id)
+      if (prescriptionFile) {
+        try {
+          await uploadPrescription(booking.id, prescriptionFile)
+        } catch {
+          // Booking is already confirmed — a failed prescription upload
+          // shouldn't block the customer from finishing.
+        }
+      }
       setSession(phone, name)
       setBookingId(booking.id)
       setPatientName(name)
@@ -213,6 +200,8 @@ export default function PathologyBooking() {
           selectedTests={selectedTests}
           togglePackage={togglePackage}
           toggleTest={toggleTest}
+          prescriptionFile={prescriptionFile}
+          setPrescriptionFile={setPrescriptionFile}
           t={t}
         />
       )}
@@ -226,7 +215,7 @@ export default function PathologyBooking() {
       )}
 
       {step === STEP.SCHEDULE && (
-        <ScheduleStep date={date} setDate={setDate} slots={slots} slotId={slotId} setSlotId={setSlotId} t={t} />
+        <ScheduleStep date={date} setDate={setDate} t={t} />
       )}
 
       {step === STEP.DETAILS && (
@@ -267,9 +256,9 @@ export default function PathologyBooking() {
           <FooterButton
             step={step}
             itemCount={itemCount}
+            canProceedFromTests={canProceedFromTests}
             bookingType={bookingType}
             date={date}
-            slotId={slotId}
             busy={busy}
             onTests={() => setStep(STEP.TYPE)}
             onType={goNextFromType}
@@ -295,15 +284,15 @@ export default function PathologyBooking() {
   )
 }
 
-function FooterButton({ step, itemCount, bookingType, date, slotId, busy, onTests, onType, onSchedule, onDetails, onVerify, t }) {
+function FooterButton({ step, itemCount, canProceedFromTests, bookingType, date, busy, onTests, onType, onSchedule, onDetails, onVerify, t }) {
   if (step === STEP.TESTS) {
-    return <button className="btn btn--primary" disabled={itemCount === 0} onClick={onTests}>{t('continue')}</button>
+    return <button className="btn btn--primary" disabled={!canProceedFromTests} onClick={onTests}>{t('continue')}</button>
   }
   if (step === STEP.TYPE) {
     return <button className="btn btn--primary" disabled={!bookingType} onClick={onType}>{t('continue')}</button>
   }
   if (step === STEP.SCHEDULE) {
-    return <button className="btn btn--primary" disabled={!date || !slotId} onClick={onSchedule}>{t('continue')}</button>
+    return <button className="btn btn--primary" disabled={!date} onClick={onSchedule}>{t('continue')}</button>
   }
   if (step === STEP.DETAILS) {
     return <button className="btn btn--primary" disabled={busy} onClick={onDetails}>{busy ? t('sending') : t('sendOtp')}</button>
@@ -314,7 +303,7 @@ function FooterButton({ step, itemCount, bookingType, date, slotId, busy, onTest
   return null
 }
 
-function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, t }) {
+function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, prescriptionFile, setPrescriptionFile, t }) {
   return (
     <div className="tests-step">
       <h2 className="section-title">{t('packages')}</h2>
@@ -344,6 +333,39 @@ function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, t
           </label>
         ))}
       </div>
+
+      <PrescriptionUpload file={prescriptionFile} setFile={setPrescriptionFile} t={t} />
+    </div>
+  )
+}
+
+function PrescriptionUpload({ file, setFile, t }) {
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
+
+  return (
+    <div className="prescription-upload">
+      <div className="prescription-upload__divider"><span>{t('or')}</span></div>
+      <h2 className="section-title">{t('prescriptionTitle')}</h2>
+      <p className="prescription-upload__note">{t('prescriptionNote')}</p>
+
+      {file ? (
+        <div className="prescription-upload__preview">
+          <img src={previewUrl} alt="Prescription" />
+          <button type="button" className="btn btn--ghost" onClick={() => setFile(null)}>{t('removePhoto')}</button>
+        </div>
+      ) : (
+        <label className="btn btn--secondary btn--block prescription-upload__btn">
+          {t('uploadPrescription')}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={(e) => e.target.files[0] && setFile(e.target.files[0])}
+          />
+        </label>
+      )}
     </div>
   )
 }
@@ -375,8 +397,8 @@ function TypeStep({ bookingType, setBookingType, t }) {
   )
 }
 
-function ScheduleStep({ date, setDate, slots, slotId, setSlotId, t }) {
-  const days = nextDays(7)
+function ScheduleStep({ date, setDate, t }) {
+  const days = nextDays(14)
   return (
     <div className="schedule-step">
       <h2 className="section-title">{t('pickDate')}</h2>
@@ -391,24 +413,7 @@ function ScheduleStep({ date, setDate, slots, slotId, setSlotId, t }) {
           )
         })}
       </div>
-
-      {date && (
-        <>
-          <h2 className="section-title">{t('pickSlot')}</h2>
-          {slots.length === 0 && <p className="empty-note">{t('noSlots')}</p>}
-          <div className="slot-list">
-            {slots.map((s) => (
-              <button
-                key={s.id}
-                className={`slot-chip ${slotId === s.id ? 'is-selected' : ''}`}
-                onClick={() => setSlotId(s.id)}
-              >
-                {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      {date && <p className="schedule-step__hours-note">{t('storeHoursNote')}</p>}
     </div>
   )
 }
@@ -447,8 +452,11 @@ function VerifyStep({ phone, otpCode, setOtpCode, onResend, error, t }) {
       <div className="verify-step__resend">
         <span>{t('otpNotReceived')}</span>
         <button className="btn btn--ghost" onClick={() => onResend('whatsapp')}>{t('resendWhatsapp')}</button>
-        <button className="btn btn--ghost" onClick={() => onResend('call')}>{t('resendCall')}</button>
+        <button className="btn btn--ghost" onClick={() => onResend('sms')}>{t('resendSms')}</button>
       </div>
+      <button className="btn btn--ghost verify-step__call" onClick={() => onResend('call')}>
+        {t('resendCall')}
+      </button>
     </div>
   )
 }
@@ -516,6 +524,7 @@ function ConfirmationScreen({ bookingId, onHome, t }) {
       <div className="confirmation-screen__icon"><CheckIcon /></div>
       <h1>{t('bookingConfirmed')}</h1>
       <p className="confirmation-screen__id">{t('bookingId')}: {bookingId?.slice(0, 8).toUpperCase()}</p>
+      <p className="confirmation-screen__hours">{t('storeHoursNote')}</p>
       <p className="confirmation-screen__note">{t('confirmationNote')} 8112060205</p>
       <button className="btn btn--primary" onClick={onHome}>{t('backToHome')}</button>
       <button className="btn btn--ghost" onClick={() => navigate('/account')}>{t('viewMyBookings')}</button>

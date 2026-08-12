@@ -32,7 +32,7 @@ function LoginForm({ t, navigate, onLoggedIn }) {
   const [phone, setPhone] = useState('')
   const [otpSent, setOtpSent] = useState(false)
   const [otpCode, setOtpCode] = useState('')
-  const [channel, setChannel] = useState('whatsapp')
+  const [channel] = useState('sms')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
