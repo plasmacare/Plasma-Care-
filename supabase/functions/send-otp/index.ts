@@ -1,4 +1,8 @@
 // Supabase Edge Function: send-otp
+// Two providers, split by channel:
+//   - 'sms' (default) and 'whatsapp' (resend option) → NinzaSMS
+//   - 'call' (alternative option, no SMS/WhatsApp needed) → 2Factor
+// OTP generation/storage/verification logic is unchanged either way.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -6,6 +10,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Edge Function secrets — Supabase Dashboard → Edge Functions → send-otp → Secrets.
+// Never put these in frontend code.
+const NINZA_API_KEY = Deno.env.get('NINZA_API_KEY')!
+const NINZA_SENDER_ID = Deno.env.get('NINZA_SENDER_ID') ?? '16046'
 const TWO_FACTOR_API_KEY = Deno.env.get('TWO_FACTOR_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -16,35 +24,41 @@ function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000))
 }
 
-// Safely parses a fetch response as JSON. If the upstream (2Factor) returns
-// HTML or plain text instead of JSON (e.g. an error page for an endpoint
-// that isn't set up yet), this returns null instead of throwing — so the
-// caller can fall back instead of crashing the whole function.
 async function safeJson(res: Response) {
   const text = await res.text()
   try {
     return JSON.parse(text)
   } catch {
-    return null
+    return { raw: text }
   }
 }
 
-async function sendViaSms(phone: string, otp: string) {
-  const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/SMS/${phone}/${otp}`
-  const res = await fetch(url)
-  return safeJson(res)
+/* ---------- NinzaSMS (SMS + WhatsApp) ---------- */
+async function sendViaNinza(phone: string, otp: string, route: 'sms' | 'waninza') {
+  const tenDigit = phone.replace(/\D/g, '').slice(-10) // Ninza wants a plain 10-digit number
+  const res = await fetch('https://ninzasms.in.net/auth/send_sms', {
+    method: 'POST',
+    headers: {
+      Authorization: NINZA_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender_id: NINZA_SENDER_ID,
+      numbers: tenDigit,
+      rout: route,
+      variables_values: otp,
+    }),
+  })
+  const body = await safeJson(res)
+  return { ok: res.ok && body?.status === 'success', body }
 }
 
-async function sendViaVoice(phone: string, otp: string) {
+/* ---------- 2Factor (Call fallback) ---------- */
+async function sendViaTwoFactorVoice(phone: string, otp: string) {
   const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/VOICE/${phone}/${otp}`
   const res = await fetch(url)
-  return safeJson(res)
-}
-
-async function sendViaWhatsapp(phone: string, otp: string) {
-  const url = `https://2factor.in/API/V1/${TWO_FACTOR_API_KEY}/ADDON_SERVICES/SEND/WHATSAPP_OTP/${phone}/${otp}`
-  const res = await fetch(url)
-  return safeJson(res)
+  const body = await safeJson(res)
+  return { ok: body?.Status === 'Success', body }
 }
 
 Deno.serve(async (req) => {
@@ -54,6 +68,7 @@ Deno.serve(async (req) => {
 
   try {
     const { phone, channel } = await req.json()
+    const requested: 'sms' | 'whatsapp' | 'call' = channel === 'whatsapp' || channel === 'call' ? channel : 'sms'
 
     if (!phone || phone.length < 10) {
       return new Response(JSON.stringify({ error: 'Valid phone number required' }), {
@@ -68,35 +83,36 @@ Deno.serve(async (req) => {
     const { error: dbError } = await supabase.from('otp_verifications').insert({
       phone,
       otp_code: otp,
-      channel: channel || 'whatsapp',
+      channel: requested,
       expires_at: expiresAt,
     })
     if (dbError) throw dbError
 
     let result
-    let channelUsed = channel || 'whatsapp'
+    let channelUsed: string = requested
 
-    if (channel === 'call') {
-      result = await sendViaVoice(phone, otp)
-    } else {
-      result = await sendViaWhatsapp(phone, otp)
-      // If WhatsApp didn't return a clean success, fall back to SMS —
-      // this also covers the case where the WhatsApp endpoint isn't
-      // provisioned yet on the 2Factor account.
-      if (!result || result?.Status !== 'Success') {
-        result = await sendViaSms(phone, otp)
+    if (requested === 'call') {
+      result = await sendViaTwoFactorVoice(phone, otp)
+    } else if (requested === 'whatsapp') {
+      result = await sendViaNinza(phone, otp, 'waninza')
+      if (!result.ok) {
+        // WhatsApp route didn't confirm — fall back to plain SMS so the
+        // customer still gets a code rather than nothing.
+        result = await sendViaNinza(phone, otp, 'sms')
         channelUsed = 'sms'
       }
+    } else {
+      result = await sendViaNinza(phone, otp, 'sms')
     }
 
-    if (!result || result?.Status !== 'Success') {
+    if (!result.ok) {
       return new Response(
-        JSON.stringify({ error: 'OTP provider did not confirm delivery', details: result }),
+        JSON.stringify({ error: 'OTP provider did not confirm delivery', details: result.body }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    return new Response(JSON.stringify({ success: true, channelUsed, twoFactorResponse: result }), {
+    return new Response(JSON.stringify({ success: true, channelUsed, providerResponse: result.body }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {
