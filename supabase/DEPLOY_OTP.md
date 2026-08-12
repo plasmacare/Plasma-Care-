@@ -1,53 +1,42 @@
-# Deploying the OTP Edge Functions
+# OTP Setup — NinzaSMS + 2Factor
 
-These run on Supabase's servers, not in the browser — this is where the
-2Factor API key lives safely.
+The `send-otp` edge function uses two providers:
 
-## 1. Install Supabase CLI (one-time)
-```bash
-npm install -g supabase
-```
+- **NinzaSMS** — default SMS, and the "Resend via WhatsApp" / "Resend via
+  SMS" options.
+- **2Factor** — kept alive just for "Get OTP via Call instead", since
+  Ninza doesn't offer a voice route.
 
-## 2. Login and link this project
-```bash
-supabase login
-supabase link --project-ref pfkiukwzfwdsdswfvfuk
-```
-(Project ref is the part of your Supabase URL before `.supabase.co`)
+`verify-otp` is unchanged — OTPs are generated and checked in our own
+`otp_verifications` table regardless of which provider delivered them, so
+no changes were needed there.
 
-## 3. Set the 2Factor API key as a secret (never in code)
-```bash
-supabase secrets set TWO_FACTOR_API_KEY=2503bcf6-237e-11f1-bcb0-0200cd936042
-```
+## Deploy the function
 
-## 4. Deploy both functions
 ```bash
 supabase functions deploy send-otp
-supabase functions deploy verify-otp
 ```
 
-## 5. Lock down the OTP table
-Run `tighten_otp_rls.sql` in the Supabase SQL Editor — this removes the
-now-unneeded public access to `otp_verifications` since only the Edge
-Functions touch it from here on.
+## Set the secrets (Supabase Dashboard → Edge Functions → send-otp → Secrets, or CLI)
 
-## 6. Test it
-From the customer app's booking flow: Details step → Send OTP → check your
-WhatsApp. If nothing arrives, check the function logs:
 ```bash
-supabase functions logs send-otp
+supabase secrets set NINZA_API_KEY=NINZASMS018a302b158f3a76a2d21765e23558a27c11e0d74f1bdc67cbff
+supabase secrets set NINZA_SENDER_ID=16046
+supabase secrets set TWO_FACTOR_API_KEY=your_existing_2factor_key
 ```
 
-## About the WhatsApp endpoint
+(`TWO_FACTOR_API_KEY` should already be set from before — only add it
+again if you're deploying to a fresh project.)
 
-The `send-otp` function calls 2Factor's WhatsApp OTP endpoint using a
-best-guess URL pattern. 2Factor's exact WhatsApp integration depends on a
-template you approve in their dashboard (under "WhatsApp API" / "Addon
-Services") — **log into your 2Factor dashboard and check the exact code
-snippet they show for your account**. If it differs from what's in
-`send-otp/index.ts`, update that one `sendViaWhatsapp` function — everything
-else (OTP storage, verification, expiry) stays the same.
+## Add credit to Ninza
 
-As a safety net, if the WhatsApp call fails, the function automatically
-falls back to SMS — so booking flow won't get stuck even if the WhatsApp
-endpoint needs adjusting.
+The dashboard screenshot showed a ₹5.00 balance — that's enough for a
+handful of test messages only. Add credit before relying on this in
+production, or OTPs will start failing with a 402 (insufficient balance)
+once it runs out.
+
+## If SMS/WhatsApp delivery fails
+
+Check the Ninza dashboard → **OTP Records** — it'll show whether the
+request reached them and what they did with it. If the request never
+shows up there at all, the API key or sender ID secret is likely wrong.
