@@ -109,11 +109,17 @@ export default function LocationPicker({ onConfirm }) {
         placePin(pos.coords.latitude, pos.coords.longitude)
         setLocating(false)
       },
-      () => {
-        setError('Location access allow karein taaki hum aapki jagah dhundh sakein.')
+      (err) => {
         setLocating(false)
+        if (err.code === err.PERMISSION_DENIED) {
+          setError('Location access blocked hai. Browser ke address bar ke paas 🔒 icon dabakar Location "Allow" karein, phir dobara try karein.')
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setError('Phone ki Location/GPS setting off hai. Settings mein Location ON karke dobara try karein.')
+        } else {
+          setError('Location dhoondhne mein time lag gaya. Dobara try karein.')
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }
 
