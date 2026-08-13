@@ -12,6 +12,18 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
 const MAX_ATTEMPTS = 5
 
+// Postgrest/Supabase errors are plain objects, not Error instances —
+// String(err) on them just gives "[object Object]". Pull out the actual
+// message so failures are debuggable instead of opaque.
+function describeError(err: unknown) {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object') {
+    const anyErr = err as Record<string, unknown>
+    return String(anyErr.message ?? anyErr.error ?? JSON.stringify(err))
+  }
+  return String(err)
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -77,7 +89,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: describeError(err) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
