@@ -100,7 +100,7 @@ export default function LocationPicker({ onConfirm }) {
 
   function useMyLocation() {
     if (!navigator.geolocation) {
-      setError('Location service is browser mein available nahi hai.')
+      setError('Location services are not available in this browser.')
       return
     }
     setLocating(true)
@@ -109,11 +109,17 @@ export default function LocationPicker({ onConfirm }) {
         placePin(pos.coords.latitude, pos.coords.longitude)
         setLocating(false)
       },
-      () => {
-        setError('Location access allow karein taaki hum aapki jagah dhundh sakein.')
+      (err) => {
         setLocating(false)
+        if (err.code === err.PERMISSION_DENIED) {
+          setError('Location access is blocked. Tap the 🔒 icon near the browser address bar, set Location to "Allow", then try again.')
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setError("Your phone's Location/GPS is turned off. Turn it on in Settings, then try again.")
+        } else {
+          setError('Finding your location took too long. Please try again.')
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }
 
@@ -140,7 +146,7 @@ export default function LocationPicker({ onConfirm }) {
 
   function confirm() {
     if (!coords || !address) {
-      setError('Pehle map pe location select karein.')
+      setError('Please select a location on the map first.')
       return
     }
     onConfirm({ fullAddress: address, landmark, latitude: coords.lat, longitude: coords.lng })
