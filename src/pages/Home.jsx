@@ -38,10 +38,6 @@ export default function Home() {
   return (
     <div className="home">
       <div className="home__top-bar">
-        <Link to="/account" className="home__account-link">
-          <UserIcon />
-          {t('myAccountNav')}
-        </Link>
         <LanguageSwitcher />
       </div>
 
@@ -184,9 +180,6 @@ function CheckHeartIcon() {
 }
 
 /* ---------- Contact icons ---------- */
-function UserIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--navy-800)" strokeWidth="1.8"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" /></svg>
-}
 function PhoneIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2C9.5 21 3 14.5 3 6a2 2 0 012-2z" /></svg>
 }
