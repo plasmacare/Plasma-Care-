@@ -74,14 +74,6 @@ export async function uploadPrescription(bookingId, file) {
   return data.publicUrl
 }
 
-export async function markBookingVerified(bookingId) {
-  const { error } = await supabase
-    .from('bookings')
-    .update({ phone_verified: true, status: 'confirmed' })
-    .eq('id', bookingId)
-  if (error) throw error
-}
-
 export async function savePatientDetails(bookingId, { name, age, gender, bloodGroup }) {
   const { error } = await supabase
     .from('bookings')
@@ -95,4 +87,42 @@ export async function savePatientDetails(bookingId, { name, age, gender, bloodGr
   if (error) throw error
 }
 
+/**
+ * Sends a (compressed) prescription photo to the analyze-prescription
+ * edge function along with the current catalog, and gets back a read of
+ * what's written plus suggested related tests. Callers should only act
+ * on the result (pre-selecting tests) when confidence >= 99 — anything
+ * lower and the customer should just pick tests manually.
+ */
+export async function analyzePrescription(file) {
+  const compressed = await compressImage(file)
+  const base64 = await fileToBase64(compressed)
+  const [{ data: tests }, { data: packages }] = await Promise.all([
+    supabase.from('individual_tests').select('id, name').eq('is_active', true),
+    supabase.from('packages').select('id, name').eq('is_active', true),
+  ])
+
+  const { data, error } = await supabase.functions.invoke('analyze-prescription', {
+    body: { imageBase64: base64, mediaType: compressed.type, tests, packages },
+  })
+  if (error) throw error
+  return data
+}
+
+export async function savePrescriptionAiResult(bookingId, { confidence, summary }) {
+  const { error } = await supabase
+    .from('bookings')
+    .update({ prescription_ai_confidence: confidence ?? null, prescription_ai_summary: summary || null })
+    .eq('id', bookingId)
+  if (error) throw error
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result).split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
 
