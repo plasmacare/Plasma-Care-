@@ -39,14 +39,29 @@ already run for the admin panel):
 1. `supabase/fix_public_access.sql` — public (non-logged-in) read/write
    access this app needs on packages, tests, bookings, and addresses.
 2. `supabase/patient_details.sql` — patient name/age/gender/blood group
-   fields, collected right after OTP verification.
+   fields.
 3. `supabase/prescription_and_no_slots.sql` — prescription photo upload
    fields + storage bucket, and makes `slot_id` nullable (booking is
    date-only now, no time slot).
+4. `supabase/prescription_ai_fields.sql` — stores the AI's confidence
+   score and summary for each uploaded prescription.
+5. `supabase/pages_announcements_ai_packages.sql` — legal pages,
+   announcements, and the AI package-suggestion queue.
 
 `supabase/slot_capacity_functions.sql` is no longer needed for new
 setups — it's left in place only because older deployments may already
 depend on it.
+
+## Edge Functions
+
+Deploy `analyze-prescription`:
+```bash
+supabase functions deploy analyze-prescription
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+```
+Get a key at https://console.anthropic.com. This is separate from the
+`generate-packages` function used by the admin panel — set the same
+secret there too if you haven't already (see the admin README).
 
 ## No accounts, no verification
 
@@ -60,19 +75,28 @@ a name and phone number (unverified) and creates the booking directly.
 
 ## What's here
 
-- **Patient details** — right after entering contact details, the flow
-  asks for the patient's name, age, gender, and blood group (the patient
-  may not be the same person who booked). Can be skipped and filled in
-  later.
-- **Prescription photo upload** — on the test-selection step, anyone
-  unsure which tests their doctor wrote down can upload a photo instead
-  of picking tests manually. It's compressed in-browser before upload
-  (resized + re-encoded as JPEG) so it doesn't eat into storage or take
-  forever on a slow connection. The admin panel shows the photo and lets
-  staff note down what it says.
+- **Booking flow order** — Patient details → Prescription upload (optional,
+  AI-assisted) → Select tests/packages (with search) → Type → Location →
+  Date → Contact details → Confirm.
+- **Prescription photo + AI**: after compressing the photo in-browser, it's
+  sent to Claude along with your live test/package catalog. If — and only
+  if — the AI is ≥99% confident it read every test correctly, matching
+  tests are pre-selected on the next screen (plus a couple of closely
+  related tests it thinks might be relevant). Below that confidence, the
+  photo still uploads and shows on the admin side for staff to read
+  manually — nothing gets silently guessed into a customer's order.
+  **Needs an `ANTHROPIC_API_KEY` secret** on the `analyze-prescription`
+  edge function (get one at console.anthropic.com) — without it, the
+  photo still uploads fine, the AI matching step just fails quietly and
+  falls back to manual selection.
 - **Date-only scheduling** — no time slot picker; the confirmation screen
   tells the customer the collection window (6:00 AM – 9:00 PM) and that
   staff will call to confirm an exact time.
+- **Legal/policy pages** (`/pages/terms`, `/pages/privacy`, etc.) — only
+  linked in the footer once an admin has actually written content for
+  them; empty ones stay hidden.
+- **Announcement popup** — shows once per browser session if an admin has
+  an announcement marked active; skippable or auto-closes after 15s.
 
 ## Mappls note
 
@@ -81,8 +105,21 @@ check your Mappls Console under "REST APIs" — Autosuggest sometimes needs a
 separate REST key from the Web SDK key. Reverse geocode (the pin-drop address)
 uses the same static key and should work as-is.
 
+## A note on "hiding" API keys / blocking DevTools
+
+This came up directly: there is no way to fully prevent someone from
+opening browser DevTools and reading a web app's JS/network requests —
+that's true of every website, not something specific to this one. What
+actually matters:
+- Supabase's anon key is *meant* to be public — it's safe to see, because
+  real access control comes from the RLS policies already in place, not
+  from hiding the key.
+- The Ninza/2Factor/Anthropic keys never ship to the browser at all —
+  they only exist as Edge Function secrets on Supabase's servers.
+- Restricting the whole site to specific IP addresses is possible, but
+  only at the hosting layer (e.g. Cloudflare Access in front of GitHub
+  Pages), not from application code.
+
 ## What's next
 
 1. Staff panel (separate app) — home-visit & in-store task views
-2. Confirm the NinzaSMS request/response shape against their docs once
-   there's real delivery volume (see `supabase/DEPLOY_OTP.md`)
