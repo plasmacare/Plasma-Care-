@@ -4,10 +4,14 @@ import StepTracker from '../components/StepTracker'
 import LocationPicker from '../components/LocationPicker'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useLanguage } from '../lib/i18n.jsx'
-import { fetchPackages, fetchTests, createBooking, savePatientDetails, uploadPrescription } from '../lib/booking'
+import {
+  fetchPackages, fetchTests, createBooking, savePatientDetails,
+  uploadPrescription, analyzePrescription, savePrescriptionAiResult,
+} from '../lib/booking'
 import './PathologyBooking.css'
 
-const STEP = { TESTS: 0, TYPE: 1, LOCATION: 2, SCHEDULE: 3, DETAILS: 4, PATIENT: 5, DONE: 6 }
+const STEP = { PATIENT: 0, PRESCRIPTION: 1, TESTS: 2, TYPE: 3, LOCATION: 4, SCHEDULE: 5, DETAILS: 6, DONE: 7 }
+const AI_CONFIDENCE_THRESHOLD = 99
 
 // Formats a Date as YYYY-MM-DD using LOCAL date parts, not UTC — using
 // toISOString() here would shift the date back a day for anyone booking
@@ -31,7 +35,7 @@ export default function PathologyBooking() {
   const navigate = useNavigate()
   const { t } = useLanguage()
 
-  const [step, setStep] = useState(STEP.TESTS)
+  const [step, setStep] = useState(STEP.PATIENT)
   const [packages, setPackages] = useState([])
   const [tests, setTests] = useState([])
   const [selectedPackages, setSelectedPackages] = useState([])
@@ -40,6 +44,8 @@ export default function PathologyBooking() {
   const [location, setLocation] = useState(null)
   const [date, setDate] = useState(null)
   const [prescriptionFile, setPrescriptionFile] = useState(null)
+  const [prescriptionBusy, setPrescriptionBusy] = useState(false)
+  const [aiResult, setAiResult] = useState(null)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [formError, setFormError] = useState('')
@@ -65,8 +71,8 @@ export default function PathologyBooking() {
   const canProceedFromTests = itemCount > 0 || !!prescriptionFile
 
   const stepLabels = bookingType === 'lab_visit'
-    ? [t('step_tests'), t('step_type'), t('step_date'), t('step_details')]
-    : [t('step_tests'), t('step_type'), t('step_location'), t('step_date'), t('step_details')]
+    ? [t('step_patient'), t('step_prescription'), t('step_tests'), t('step_type'), t('step_date'), t('step_details')]
+    : [t('step_patient'), t('step_prescription'), t('step_tests'), t('step_type'), t('step_location'), t('step_date'), t('step_details')]
 
   const visualStep = bookingType === 'lab_visit' && step >= STEP.LOCATION ? step - 1 : step
 
@@ -80,6 +86,34 @@ export default function PathologyBooking() {
   function goNextFromType() {
     if (bookingType === 'home_collection') setStep(STEP.LOCATION)
     else setStep(STEP.SCHEDULE)
+  }
+
+  async function continueFromPrescription() {
+    if (!prescriptionFile) {
+      setStep(STEP.TESTS)
+      return
+    }
+    setPrescriptionBusy(true)
+    try {
+      const result = await analyzePrescription(prescriptionFile)
+      setAiResult(result)
+      if ((result?.confidence ?? 0) >= AI_CONFIDENCE_THRESHOLD) {
+        const ids = [...(result.matchedTestIds || []), ...(result.suggestedExtraTestIds || [])]
+        const testIdSet = new Set(tests.map((x) => x.id))
+        const packageIdSet = new Set(packages.map((x) => x.id))
+        const newTests = ids.filter((id) => testIdSet.has(id))
+        const newPackages = ids.filter((id) => packageIdSet.has(id))
+        setSelectedTests((s) => Array.from(new Set([...s, ...newTests])))
+        setSelectedPackages((s) => Array.from(new Set([...s, ...newPackages])))
+      }
+    } catch {
+      // AI analysis failing shouldn't block the flow — customer can
+      // still pick tests manually, and admin can read the photo directly.
+      setAiResult(null)
+    } finally {
+      setPrescriptionBusy(false)
+      setStep(STEP.TESTS)
+    }
   }
 
   async function submitDetails() {
@@ -100,6 +134,12 @@ export default function PathologyBooking() {
         scheduledDate: formatLocalDate(date),
         address: location,
       })
+      await savePatientDetails(booking.id, {
+        name: patientName,
+        age: patientAge,
+        gender: patientGender,
+        bloodGroup: patientBloodGroup,
+      }).catch(() => {})
       if (prescriptionFile) {
         try {
           await uploadPrescription(booking.id, prescriptionFile)
@@ -108,31 +148,15 @@ export default function PathologyBooking() {
           // shouldn't block the customer from finishing.
         }
       }
+      if (aiResult) {
+        await savePrescriptionAiResult(booking.id, aiResult).catch(() => {})
+      }
       setBookingId(booking.id)
-      setPatientName(name)
-      setStep(STEP.PATIENT)
+      setStep(STEP.DONE)
     } catch (e) {
       setFormError('Could not create your booking. Please try again.')
     } finally {
       setBusy(false)
-    }
-  }
-
-  async function submitPatientDetails() {
-    setBusy(true)
-    try {
-      await savePatientDetails(bookingId, {
-        name: patientName,
-        age: patientAge,
-        gender: patientGender,
-        bloodGroup: patientBloodGroup,
-      })
-    } catch {
-      // Booking already exists and is confirmed — don't block the
-      // confirmation screen over this being saved.
-    } finally {
-      setBusy(false)
-      setStep(STEP.DONE)
     }
   }
 
@@ -143,18 +167,29 @@ export default function PathologyBooking() {
   return (
     <div className="page">
       <div className="page-header">
-        {step !== STEP.PATIENT && (
-          <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
-            <BackIcon />
-          </button>
-        )}
-        {step === STEP.PATIENT && <div className="page-header__spacer" />}
+        <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
+          <BackIcon />
+        </button>
         <h1>{t('bookingTitle')}</h1>
         <div className="page-header__spacer" />
         <LanguageSwitcher />
       </div>
 
       <StepTracker steps={stepLabels} currentStep={visualStep} />
+
+      {step === STEP.PATIENT && (
+        <PatientDetailsStep
+          name={patientName} setName={setPatientName}
+          age={patientAge} setAge={setPatientAge}
+          gender={patientGender} setGender={setPatientGender}
+          bloodGroup={patientBloodGroup} setBloodGroup={setPatientBloodGroup}
+          t={t}
+        />
+      )}
+
+      {step === STEP.PRESCRIPTION && (
+        <PrescriptionStep file={prescriptionFile} setFile={setPrescriptionFile} t={t} />
+      )}
 
       {step === STEP.TESTS && (
         <TestSelectionStep
@@ -164,8 +199,7 @@ export default function PathologyBooking() {
           selectedTests={selectedTests}
           togglePackage={togglePackage}
           toggleTest={toggleTest}
-          prescriptionFile={prescriptionFile}
-          setPrescriptionFile={setPrescriptionFile}
+          aiResult={aiResult}
           t={t}
         />
       )}
@@ -191,22 +225,14 @@ export default function PathologyBooking() {
         />
       )}
 
-      {step === STEP.PATIENT && (
-        <PatientDetailsStep
-          name={patientName} setName={setPatientName}
-          age={patientAge} setAge={setPatientAge}
-          gender={patientGender} setGender={setPatientGender}
-          bloodGroup={patientBloodGroup} setBloodGroup={setPatientBloodGroup}
-          t={t}
-        />
-      )}
-
-      {step !== STEP.LOCATION && step !== STEP.PATIENT && (
+      {step !== STEP.LOCATION && (
         <div className="sticky-footer">
-          <div className="sticky-footer__summary">
-            <div className="sticky-footer__amount">₹{total || 0}</div>
-            <div className="sticky-footer__label">{itemCount} {itemCount !== 1 ? t('itemsSelected') : t('itemSelected')}</div>
-          </div>
+          {step !== STEP.PATIENT && step !== STEP.PRESCRIPTION && (
+            <div className="sticky-footer__summary">
+              <div className="sticky-footer__amount">₹{total || 0}</div>
+              <div className="sticky-footer__label">{itemCount} {itemCount !== 1 ? t('itemsSelected') : t('itemSelected')}</div>
+            </div>
+          )}
           <FooterButton
             step={step}
             itemCount={itemCount}
@@ -214,6 +240,10 @@ export default function PathologyBooking() {
             bookingType={bookingType}
             date={date}
             busy={busy}
+            prescriptionBusy={prescriptionBusy}
+            patientName={patientName}
+            onPatient={() => setStep(STEP.PRESCRIPTION)}
+            onPrescription={continueFromPrescription}
             onTests={() => setStep(STEP.TYPE)}
             onType={goNextFromType}
             onSchedule={() => setStep(STEP.DETAILS)}
@@ -222,22 +252,24 @@ export default function PathologyBooking() {
           />
         </div>
       )}
-
-      {step === STEP.PATIENT && (
-        <div className="sticky-footer">
-          <button className="btn btn--ghost" disabled={busy} onClick={() => setStep(STEP.DONE)}>
-            {t('skipForNow')}
-          </button>
-          <button className="btn btn--primary" disabled={busy || !patientName.trim()} onClick={submitPatientDetails}>
-            {busy ? t('saving') : t('saveContinue')}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
 
-function FooterButton({ step, itemCount, canProceedFromTests, bookingType, date, busy, onTests, onType, onSchedule, onDetails, t }) {
+function FooterButton({
+  step, itemCount, canProceedFromTests, bookingType, date, busy, prescriptionBusy, patientName,
+  onPatient, onPrescription, onTests, onType, onSchedule, onDetails, t,
+}) {
+  if (step === STEP.PATIENT) {
+    return <button className="btn btn--primary" disabled={!patientName.trim()} onClick={onPatient}>{t('continue')}</button>
+  }
+  if (step === STEP.PRESCRIPTION) {
+    return (
+      <button className="btn btn--primary" disabled={prescriptionBusy} onClick={onPrescription}>
+        {prescriptionBusy ? t('analyzing') : t('continue')}
+      </button>
+    )
+  }
   if (step === STEP.TESTS) {
     return <button className="btn btn--primary" disabled={!canProceedFromTests} onClick={onTests}>{t('continue')}</button>
   }
@@ -257,51 +289,70 @@ function FooterButton({ step, itemCount, canProceedFromTests, bookingType, date,
   return null
 }
 
-function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, prescriptionFile, setPrescriptionFile, t }) {
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown']
+
+function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t }) {
   return (
-    <div className="tests-step">
-      <h2 className="section-title">{t('packages')}</h2>
-      <div className="item-list">
-        {packages.map((p) => (
-          <label key={p.id} className={`item-row ${selectedPackages.includes(p.id) ? 'is-selected' : ''}`}>
-            <input type="checkbox" checked={selectedPackages.includes(p.id)} onChange={() => togglePackage(p.id)} />
-            <div className="item-row__info">
-              <span className="item-row__name">{p.name}</span>
-              <span className="item-row__desc">{p.description}</span>
-            </div>
-            <span className="item-row__price">₹{p.price}</span>
-          </label>
-        ))}
+    <div className="details-step">
+      <h2 className="section-title">{t('patientDetailsTitle')}</h2>
+      <p className="details-step__note">{t('patientDetailsNote')}</p>
+      <div className="field">
+        <label>{t('patientName')}</label>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('fullNamePlaceholder')} />
       </div>
-
-      <h2 className="section-title">{t('individualTests')}</h2>
-      <div className="item-list">
-        {tests.map((tItem) => (
-          <label key={tItem.id} className={`item-row ${selectedTests.includes(tItem.id) ? 'is-selected' : ''}`}>
-            <input type="checkbox" checked={selectedTests.includes(tItem.id)} onChange={() => toggleTest(tItem.id)} />
-            <div className="item-row__info">
-              <span className="item-row__name">{tItem.name}</span>
-              <span className="item-row__desc">{tItem.category}</span>
-            </div>
-            <span className="item-row__price">₹{tItem.price}</span>
-          </label>
-        ))}
+      <div className="field">
+        <label>{t('patientAge')}</label>
+        <input
+          type="number"
+          min="0"
+          max="120"
+          value={age}
+          onChange={(e) => setAge(e.target.value.slice(0, 3))}
+          placeholder={t('patientAgePlaceholder')}
+        />
       </div>
-
-      <PrescriptionUpload file={prescriptionFile} setFile={setPrescriptionFile} t={t} />
+      <div className="field">
+        <label>{t('patientGender')}</label>
+        <div className="pill-group">
+          {['male', 'female', 'other'].map((g) => (
+            <button
+              key={g}
+              type="button"
+              className={`pill ${gender === g ? 'is-selected' : ''}`}
+              onClick={() => setGender(g)}
+            >
+              {t(`gender_${g}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label>{t('patientBloodGroup')}</label>
+        <div className="pill-group">
+          {BLOOD_GROUPS.map((bg) => (
+            <button
+              key={bg}
+              type="button"
+              className={`pill ${bloodGroup === bg ? 'is-selected' : ''}`}
+              onClick={() => setBloodGroup(bg)}
+            >
+              {bg}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
 
-function PrescriptionUpload({ file, setFile, t }) {
+function PrescriptionStep({ file, setFile, t }) {
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
 
   return (
-    <div className="prescription-upload">
-      <div className="prescription-upload__divider"><span>{t('or')}</span></div>
+    <div className="prescription-step">
       <h2 className="section-title">{t('prescriptionTitle')}</h2>
-      <p className="prescription-upload__note">{t('prescriptionNote')}</p>
+      <p className="prescription-step__note">{t('prescriptionNote')}</p>
 
       {file ? (
         <div className="prescription-upload__preview">
@@ -320,6 +371,66 @@ function PrescriptionUpload({ file, setFile, t }) {
           />
         </label>
       )}
+      <p className="prescription-step__skip-note">{t('prescriptionSkipNote')}</p>
+    </div>
+  )
+}
+
+function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, aiResult, t }) {
+  const [query, setQuery] = useState('')
+  const q = query.trim().toLowerCase()
+  const filteredPackages = q ? packages.filter((p) => p.name.toLowerCase().includes(q)) : packages
+  const filteredTests = q ? tests.filter((tItem) => tItem.name.toLowerCase().includes(q)) : tests
+  const aiApplied = aiResult && (aiResult.confidence ?? 0) >= AI_CONFIDENCE_THRESHOLD
+
+  return (
+    <div className="tests-step">
+      <div className="search-bar">
+        <SearchIcon />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('searchTestsPlaceholder')}
+        />
+      </div>
+
+      {aiApplied && (
+        <div className="ai-banner">
+          <strong>{t('aiPreSelectedTitle')}</strong>
+          <p>{aiResult.summary}</p>
+        </div>
+      )}
+
+      <h2 className="section-title">{t('packages')}</h2>
+      <div className="item-list">
+        {filteredPackages.map((p) => (
+          <label key={p.id} className={`item-row ${selectedPackages.includes(p.id) ? 'is-selected' : ''}`}>
+            <input type="checkbox" checked={selectedPackages.includes(p.id)} onChange={() => togglePackage(p.id)} />
+            <div className="item-row__info">
+              <span className="item-row__name">{p.name}</span>
+              <span className="item-row__desc">{p.description}</span>
+            </div>
+            <span className="item-row__price">₹{p.price}</span>
+          </label>
+        ))}
+        {filteredPackages.length === 0 && <p className="empty-note">{t('noResults')}</p>}
+      </div>
+
+      <h2 className="section-title">{t('individualTests')}</h2>
+      <div className="item-list">
+        {filteredTests.map((tItem) => (
+          <label key={tItem.id} className={`item-row ${selectedTests.includes(tItem.id) ? 'is-selected' : ''}`}>
+            <input type="checkbox" checked={selectedTests.includes(tItem.id)} onChange={() => toggleTest(tItem.id)} />
+            <div className="item-row__info">
+              <span className="item-row__name">{tItem.name}</span>
+              <span className="item-row__desc">{tItem.category}</span>
+            </div>
+            <span className="item-row__price">₹{tItem.price}</span>
+          </label>
+        ))}
+        {filteredTests.length === 0 && <p className="empty-note">{t('noResults')}</p>}
+      </div>
     </div>
   )
 }
@@ -389,62 +500,6 @@ function DetailsStep({ name, setName, phone, setPhone, error, t }) {
   )
 }
 
-const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown']
-
-function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t }) {
-  return (
-    <div className="details-step">
-      <h2 className="section-title">{t('patientDetailsTitle')}</h2>
-      <p className="details-step__note">{t('patientDetailsNote')}</p>
-      <div className="field">
-        <label>{t('patientName')}</label>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('fullNamePlaceholder')} />
-      </div>
-      <div className="field">
-        <label>{t('patientAge')}</label>
-        <input
-          type="number"
-          min="0"
-          max="120"
-          value={age}
-          onChange={(e) => setAge(e.target.value.slice(0, 3))}
-          placeholder={t('patientAgePlaceholder')}
-        />
-      </div>
-      <div className="field">
-        <label>{t('patientGender')}</label>
-        <div className="pill-group">
-          {['male', 'female', 'other'].map((g) => (
-            <button
-              key={g}
-              type="button"
-              className={`pill ${gender === g ? 'is-selected' : ''}`}
-              onClick={() => setGender(g)}
-            >
-              {t(`gender_${g}`)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="field">
-        <label>{t('patientBloodGroup')}</label>
-        <div className="pill-group">
-          {BLOOD_GROUPS.map((bg) => (
-            <button
-              key={bg}
-              type="button"
-              className={`pill ${bloodGroup === bg ? 'is-selected' : ''}`}
-              onClick={() => setBloodGroup(bg)}
-            >
-              {bg}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function ConfirmationScreen({ bookingId, onHome, t }) {
   return (
     <div className="page confirmation-screen">
@@ -469,4 +524,7 @@ function LabIcon() {
 }
 function CheckIcon() {
   return <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5" /></svg>
+}
+function SearchIcon() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--slate)" strokeWidth="1.8"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
 }

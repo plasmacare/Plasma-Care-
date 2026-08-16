@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PulseDivider from '../components/PulseDivider'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import AnnouncementPopup from '../components/AnnouncementPopup'
 import { useLanguage } from '../lib/i18n.jsx'
+import { fetchAvailableLegalPages } from '../lib/content'
 import logoFull from '../assets/logo-full.png'
 import './Home.css'
 
@@ -15,6 +17,11 @@ const INSTAGRAM_LINK = 'https://instagram.com/official.plasmacare'
 export default function Home() {
   const { t } = useLanguage()
   const [showContactSheet, setShowContactSheet] = useState(false)
+  const [legalPages, setLegalPages] = useState([])
+
+  useEffect(() => {
+    fetchAvailableLegalPages().then(setLegalPages).catch(() => {})
+  }, [])
 
   const OTHER_SERVICES = [
     { key: 'radiology', name: t('svc_radiology_name'), icon: ScanIcon },
@@ -37,6 +44,7 @@ export default function Home() {
 
   return (
     <div className="home">
+      <AnnouncementPopup />
       <div className="home__top-bar">
         <LanguageSwitcher />
       </div>
@@ -111,6 +119,13 @@ export default function Home() {
             <span>G13 K8 BDA Market Complex, Kalinga Nagar, Bhubaneswar – 751003</span>
           </div>
         </div>
+        {legalPages.length > 0 && (
+          <div className="home__legal-links">
+            {legalPages.map((p) => (
+              <Link key={p.slug} to={`/pages/${p.slug}`}>{p.title}</Link>
+            ))}
+          </div>
+        )}
         <p className="home__copyright">
           © {new Date().getFullYear()} Plasma Care, a unit of Trivana Ventures LLP. All rights reserved.
         </p>

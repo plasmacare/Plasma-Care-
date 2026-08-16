@@ -98,34 +98,17 @@
 .details-step__note { font-size: 12.5px; color: var(--slate); margin-top: -4px; }
 .field-error { font-size: 12.5px; color: var(--red-600); margin-top: 4px; }
 
-/* ---------- Prescription upload (alternative to picking tests) ---------- */
-.prescription-upload {
-  margin-top: 28px;
-}
-.prescription-upload__divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-.prescription-upload__divider::before,
-.prescription-upload__divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--line);
-}
-.prescription-upload__divider span {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--slate-light);
-  letter-spacing: 0.06em;
-}
-.prescription-upload__note {
-  font-size: 12.5px;
+/* ---------- Prescription step ---------- */
+.prescription-step__note {
+  font-size: 13px;
   color: var(--slate);
-  margin: -6px 0 12px;
+  margin: -4px 0 16px;
   line-height: 1.5;
+}
+.prescription-step__skip-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--slate-light);
 }
 .prescription-upload__btn {
   cursor: pointer;
@@ -143,6 +126,48 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   object-fit: cover;
+}
+
+/* ---------- Search bar (test/package selection) ---------- */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+.search-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  background: none;
+  color: var(--ink);
+}
+
+/* ---------- AI pre-selection banner ---------- */
+.ai-banner {
+  background: #EEF6FF;
+  border: 1px solid #C7E0FB;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.ai-banner strong {
+  display: block;
+  font-size: 12.5px;
+  color: #1B4C8C;
+  margin-bottom: 3px;
+}
+.ai-banner p {
+  font-size: 12.5px;
+  color: #2E5A94;
+  margin: 0;
+  line-height: 1.4;
 }
 
 .verify-step { display: flex; flex-direction: column; gap: 16px; align-items: center; text-align: center; }

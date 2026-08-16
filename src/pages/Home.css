@@ -270,3 +270,15 @@
   font-size: 11px;
   color: var(--slate-light);
 }
+.home__legal-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.home__legal-links a {
+  font-size: 11.5px;
+  color: var(--slate);
+  text-decoration: underline;
+}
