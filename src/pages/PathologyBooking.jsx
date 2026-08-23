@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import StepTracker from '../components/StepTracker'
 import LocationPicker from '../components/LocationPicker'
@@ -51,6 +51,7 @@ export default function PathologyBooking() {
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
   const [bookingId, setBookingId] = useState(null)
+  const [prescriptionUploadError, setPrescriptionUploadError] = useState('')
   const [patientName, setPatientName] = useState('')
   const [patientAge, setPatientAge] = useState('')
   const [patientGender, setPatientGender] = useState('')
@@ -143,9 +144,12 @@ export default function PathologyBooking() {
       if (prescriptionFile) {
         try {
           await uploadPrescription(booking.id, prescriptionFile)
-        } catch {
+        } catch (uploadErr) {
           // Booking is already created — a failed prescription upload
-          // shouldn't block the customer from finishing.
+          // shouldn't block the customer from finishing. But don't hide
+          // it either: log it and let the confirmation screen mention it.
+          console.error('Prescription upload failed:', uploadErr)
+          setPrescriptionUploadError(uploadErr?.message || 'Unknown error')
         }
       }
       if (aiResult) {
@@ -161,7 +165,7 @@ export default function PathologyBooking() {
   }
 
   if (step === STEP.DONE) {
-    return <ConfirmationScreen bookingId={bookingId} onHome={() => navigate('/')} t={t} />
+    return <ConfirmationScreen bookingId={bookingId} prescriptionUploadError={prescriptionUploadError} onHome={() => navigate('/')} t={t} />
   }
 
   return (
@@ -360,16 +364,27 @@ function PrescriptionStep({ file, setFile, t }) {
           <button type="button" className="btn btn--ghost" onClick={() => setFile(null)}>{t('removePhoto')}</button>
         </div>
       ) : (
-        <label className="btn btn--secondary btn--block prescription-upload__btn">
-          {t('uploadPrescription')}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            onChange={(e) => e.target.files[0] && setFile(e.target.files[0])}
-          />
-        </label>
+        <div className="prescription-upload__choices">
+          <label className="btn btn--secondary btn--block prescription-upload__btn">
+            {t('takePhoto')}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              onChange={(e) => e.target.files[0] && setFile(e.target.files[0])}
+            />
+          </label>
+          <label className="btn btn--secondary btn--block prescription-upload__btn">
+            {t('chooseFromGallery')}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => e.target.files[0] && setFile(e.target.files[0])}
+            />
+          </label>
+        </div>
       )}
       <p className="prescription-step__skip-note">{t('prescriptionSkipNote')}</p>
     </div>
@@ -500,15 +515,44 @@ function DetailsStep({ name, setName, phone, setPhone, error, t }) {
   )
 }
 
-function ConfirmationScreen({ bookingId, onHome, t }) {
+function ConfirmationScreen({ bookingId, prescriptionUploadError, onHome, t }) {
+  const cardRef = useRef(null)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const canvas = await html2canvas(cardRef.current, { backgroundColor: '#F5F3EE', scale: 2 })
+      const link = document.createElement('a')
+      link.download = `plasma-care-booking-${bookingId?.slice(0, 8) || 'confirmation'}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    } catch {
+      alert('Could not save the screenshot. Please take a manual screenshot instead.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="page confirmation-screen">
-      <div className="confirmation-screen__icon"><CheckIcon /></div>
-      <h1>{t('bookingConfirmed')}</h1>
-      <p className="confirmation-screen__id">{t('bookingId')}: {bookingId?.slice(0, 8).toUpperCase()}</p>
-      <p className="confirmation-screen__hours">{t('storeHoursNote')}</p>
-      <p className="confirmation-screen__note">{t('confirmationNote')} 8112060205</p>
+      <div className="confirmation-screen__card" ref={cardRef}>
+        <div className="confirmation-screen__icon"><CheckIcon /></div>
+        <h1>{t('bookingConfirmed')}</h1>
+        <p className="confirmation-screen__id">{t('bookingId')}: {bookingId?.slice(0, 8).toUpperCase()}</p>
+        <p className="confirmation-screen__hours">{t('storeHoursNote')}</p>
+        <p className="confirmation-screen__note">{t('confirmationNote')} 8112060205</p>
+      </div>
+      {prescriptionUploadError && (
+        <p className="confirmation-screen__warning">
+          {t('prescriptionUploadFailedNote')} 8112060205.
+        </p>
+      )}
       <button className="btn btn--primary" onClick={onHome}>{t('backToHome')}</button>
+      <button className="btn btn--ghost" disabled={saving} onClick={handleSave}>
+        {saving ? t('saving') : t('saveScreenshot')}
+      </button>
     </div>
   )
 }
