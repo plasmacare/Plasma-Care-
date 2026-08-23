@@ -21,6 +21,17 @@ export async function fetchTests() {
   return data
 }
 
+async function fetchClientIp() {
+  try {
+    const res = await fetch('https://api.ipify.org?format=json')
+    const data = await res.json()
+    return data.ip || null
+  } catch {
+    // Not fatal — spam detection just has one less signal for this booking.
+    return null
+  }
+}
+
 export async function createBooking({
   customerName,
   customerPhone,
@@ -31,6 +42,8 @@ export async function createBooking({
   scheduledDate,
   address, // { fullAddress, landmark, latitude, longitude } | null
 }) {
+  const customerIp = await fetchClientIp()
+
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .insert({
@@ -41,6 +54,7 @@ export async function createBooking({
       selected_tests: selectedTests,
       total_amount: totalAmount,
       scheduled_date: scheduledDate,
+      customer_ip: customerIp,
       status: 'pending',
     })
     .select()
