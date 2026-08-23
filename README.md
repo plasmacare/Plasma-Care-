@@ -123,3 +123,22 @@ actually matters:
 ## What's next
 
 1. Staff panel (separate app) — home-visit & in-store task views
+
+## New in this update
+
+- **Prescription upload errors are no longer silent** — if the upload
+  fails, it's logged to the browser console and the confirmation screen
+  tells the customer to WhatsApp it directly, instead of just vanishing.
+- **Camera or gallery** — the prescription step now offers both as
+  separate buttons, instead of one button that only opened the camera.
+- **Save as image** — the confirmation screen has a button that
+  downloads a screenshot of the booking confirmation (via html2canvas).
+- **All 66 previously-English-only strings now have real translations**
+  in Hindi, Odia, Bengali, Telugu, and Assamese — switching languages
+  should no longer show a mix of translated and English text.
+- **Full 220-test catalog** — run `supabase/seed_full_test_catalog.sql`
+  to load every test from the price list PDF into `individual_tests`
+  (safe to re-run, skips existing names).
+- **Customer IP is now recorded** per booking (`supabase/customer_ip_tracking.sql`)
+  — used by the admin panel's spam detection to flag unusually many
+  bookings from the same IP.
