@@ -47,10 +47,34 @@ already run for the admin panel):
    score and summary for each uploaded prescription.
 5. `supabase/pages_announcements_ai_packages.sql` — legal pages,
    announcements, and the AI package-suggestion queue.
+6. `supabase/fix_prescriptions_bucket_public.sql` — fixes a bug where
+   uploaded prescription photos could silently fail to display (see
+   "What's new" below). Safe to re-run.
+7. `supabase/payment_v2_and_announcement_poster.sql` — adds the
+   `/pay/:bookingId` payment page's storage bucket + columns, the
+   announcement poster image column/bucket, and a column to record why a
+   prescription upload failed (so it's visible to admin instead of just
+   silently missing).
 
 `supabase/slot_capacity_functions.sql` is no longer needed for new
 setups — it's left in place only because older deployments may already
 depend on it.
+
+## What's new in this update
+
+- **Payment page** — after admin requests payment for a booking, the
+  customer can now see the QR (or a "Pay Now" button for gateway
+  payments) at `/pay/:bookingId`, and upload a screenshot as proof for
+  UPI payments. This used to only be visible inside the admin panel.
+- **Prescription photo bug fix** — photos customers uploaded were
+  sometimes not rendering anywhere (including for admin) because the
+  storage bucket wasn't always created as public. Run
+  `fix_prescriptions_bucket_public.sql` to fix existing deployments.
+- **Announcement poster image** — the popup can now show an image at
+  the top, if the admin uploaded one.
+- **Animated hero** — the home screen now has a lightweight,
+  continuously-looping heartbeat-line animation and a few soft drifting
+  accents behind the logo (pure CSS, respects reduced-motion settings).
 
 ## Edge Functions
 
