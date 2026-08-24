@@ -88,6 +88,15 @@ export async function uploadPrescription(bookingId, file) {
   return data.publicUrl
 }
 
+/** Records why a prescription upload failed so admin can see it and follow up, instead of the booking just quietly missing a photo. */
+export async function savePrescriptionUploadError(bookingId, message) {
+  const { error } = await supabase
+    .from('bookings')
+    .update({ prescription_upload_error: message || null })
+    .eq('id', bookingId)
+  if (error) throw error
+}
+
 export async function savePatientDetails(bookingId, { name, age, gender, bloodGroup }) {
   const { error } = await supabase
     .from('bookings')
