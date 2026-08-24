@@ -43,6 +43,9 @@ export default function AnnouncementPopup() {
         <button className="announcement-card__close" onClick={() => setVisible(false)} aria-label="Close">
           ×
         </button>
+        {announcement.image_url && (
+          <img src={announcement.image_url} alt="" className="announcement-card__poster" />
+        )}
         <h2>{announcement.title}</h2>
         <p>{announcement.message}</p>
         {announcement.cta_text && announcement.cta_link && (

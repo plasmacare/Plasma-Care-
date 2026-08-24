@@ -18,6 +18,14 @@
   box-shadow: var(--shadow-raised);
   text-align: center;
 }
+.announcement-card__poster {
+  width: calc(100% + 44px);
+  margin: -28px -22px 14px;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  display: block;
+}
 .announcement-card__close {
   position: absolute;
   top: 10px;
@@ -29,6 +37,12 @@
   border: none;
   cursor: pointer;
   padding: 4px;
+  z-index: 1;
+}
+.announcement-card:has(.announcement-card__poster) .announcement-card__close {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  color: var(--navy-950);
 }
 .announcement-card h2 {
   font-size: 19px;
