@@ -6,7 +6,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useLanguage } from '../lib/i18n.jsx'
 import {
   fetchPackages, fetchTests, createBooking, savePatientDetails,
-  uploadPrescription, analyzePrescription, savePrescriptionAiResult,
+  uploadPrescription, analyzePrescription, savePrescriptionAiResult, savePrescriptionUploadError,
 } from '../lib/booking'
 import './PathologyBooking.css'
 
@@ -149,7 +149,9 @@ export default function PathologyBooking() {
           // shouldn't block the customer from finishing. But don't hide
           // it either: log it and let the confirmation screen mention it.
           console.error('Prescription upload failed:', uploadErr)
-          setPrescriptionUploadError(uploadErr?.message || 'Unknown error')
+          const msg = uploadErr?.message || 'Unknown error'
+          setPrescriptionUploadError(msg)
+          await savePrescriptionUploadError(booking.id, msg).catch(() => {})
         }
       }
       if (aiResult) {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PulseDivider from '../components/PulseDivider'
+import HeroBackground from '../components/HeroBackground'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import AnnouncementPopup from '../components/AnnouncementPopup'
 import { useLanguage } from '../lib/i18n.jsx'
@@ -50,6 +51,7 @@ export default function Home() {
       </div>
 
       <header className="home__hero">
+        <HeroBackground />
         <img src={logoFull} alt="Plasma Care — A Unit of Trivana Ventures LLP" className="home__logo-full" />
         <p className="home__tagline">{t('tagline')}</p>
         <p className="home__sub">G13 K8 BDA Market Complex, Kalinga Nagar</p>
