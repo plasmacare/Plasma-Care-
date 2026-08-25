@@ -8,9 +8,12 @@ import {
   fetchPackages, fetchTests, createBooking, savePatientDetails,
   uploadPrescription, analyzePrescription, savePrescriptionAiResult, savePrescriptionUploadError,
 } from '../lib/booking'
+import {
+  fetchPaymentSettings, createPaymentRequest, upiLinkToQrImageUrl, uploadPaymentScreenshot,
+} from '../lib/payment'
 import './PathologyBooking.css'
 
-const STEP = { PATIENT: 0, PRESCRIPTION: 1, TESTS: 2, TYPE: 3, LOCATION: 4, SCHEDULE: 5, DETAILS: 6, DONE: 7 }
+const STEP = { PATIENT: 0, PRESCRIPTION: 1, TESTS: 2, TYPE: 3, LOCATION: 4, SCHEDULE: 5, DETAILS: 6, PAYMENT: 7, DONE: 8 }
 const AI_CONFIDENCE_THRESHOLD = 99
 
 // Formats a Date as YYYY-MM-DD using LOCAL date parts, not UTC — using
@@ -23,10 +26,17 @@ function formatLocalDate(d) {
   return `${y}-${m}-${day}`
 }
 
+// Collection hours end at 9 PM. Once we're past that, "today" is no
+// longer a bookable slot, so it's dropped from the date picker until
+// tomorrow.
+const COLLECTION_HOURS_END = 21 // 9 PM, 24h clock
+
 function nextDays(n) {
+  const now = new Date()
+  const startOffset = now.getHours() >= COLLECTION_HOURS_END ? 1 : 0
   return Array.from({ length: n }, (_, i) => {
     const d = new Date()
-    d.setDate(d.getDate() + i)
+    d.setDate(d.getDate() + startOffset + i)
     return d
   })
 }
@@ -56,10 +66,15 @@ export default function PathologyBooking() {
   const [patientAge, setPatientAge] = useState('')
   const [patientGender, setPatientGender] = useState('')
   const [patientBloodGroup, setPatientBloodGroup] = useState('')
+  const [paymentSettings, setPaymentSettings] = useState(null)
+  const [paymentInfo, setPaymentInfo] = useState(null) // { amount, method, link }
+  const [paymentScreenshotUrl, setPaymentScreenshotUrl] = useState('')
+  const [paymentScreenshotUploaded, setPaymentScreenshotUploaded] = useState(false)
 
   useEffect(() => {
     fetchPackages().then(setPackages).catch(() => {})
     fetchTests().then(setTests).catch(() => {})
+    fetchPaymentSettings().then(setPaymentSettings).catch(() => {})
   }, [])
 
   const total = useMemo(() => {
@@ -75,7 +90,10 @@ export default function PathologyBooking() {
     ? [t('step_patient'), t('step_prescription'), t('step_tests'), t('step_type'), t('step_date'), t('step_details')]
     : [t('step_patient'), t('step_prescription'), t('step_tests'), t('step_type'), t('step_location'), t('step_date'), t('step_details')]
 
-  const visualStep = bookingType === 'lab_visit' && step >= STEP.LOCATION ? step - 1 : step
+  const visualStep = Math.min(
+    bookingType === 'lab_visit' && step >= STEP.LOCATION ? step - 1 : step,
+    stepLabels.length - 1,
+  )
 
   function togglePackage(id) {
     setSelectedPackages((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
@@ -158,7 +176,21 @@ export default function PathologyBooking() {
         await savePrescriptionAiResult(booking.id, aiResult).catch(() => {})
       }
       setBookingId(booking.id)
-      setStep(STEP.DONE)
+
+      if (paymentSettings?.enabled) {
+        try {
+          const info = await createPaymentRequest(booking, paymentSettings)
+          setPaymentInfo(info)
+          setStep(STEP.PAYMENT)
+        } catch (payErr) {
+          // Payment setup failing shouldn't strand the customer — booking
+          // is already confirmed, admin can create the request manually.
+          console.error('Payment request failed:', payErr)
+          setStep(STEP.DONE)
+        }
+      } else {
+        setStep(STEP.DONE)
+      }
     } catch (e) {
       setFormError('Could not create your booking. Please try again.')
     } finally {
@@ -167,15 +199,26 @@ export default function PathologyBooking() {
   }
 
   if (step === STEP.DONE) {
-    return <ConfirmationScreen bookingId={bookingId} prescriptionUploadError={prescriptionUploadError} onHome={() => navigate('/')} t={t} />
+    return (
+      <ConfirmationScreen
+        bookingId={bookingId}
+        prescriptionUploadError={prescriptionUploadError}
+        paymentInfo={paymentInfo}
+        paymentScreenshotUploaded={paymentScreenshotUploaded}
+        onHome={() => navigate('/')}
+        t={t}
+      />
+    )
   }
 
   return (
     <div className="page">
       <div className="page-header">
-        <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
-          <BackIcon />
-        </button>
+        {step !== STEP.PAYMENT && (
+          <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
+            <BackIcon />
+          </button>
+        )}
         <h1>{t('bookingTitle')}</h1>
         <div className="page-header__spacer" />
         <LanguageSwitcher />
@@ -231,7 +274,18 @@ export default function PathologyBooking() {
         />
       )}
 
-      {step !== STEP.LOCATION && (
+      {step === STEP.PAYMENT && paymentInfo && (
+        <PaymentStep
+          info={paymentInfo}
+          bookingId={bookingId}
+          screenshotUrl={paymentScreenshotUrl}
+          onScreenshotUploaded={(url) => { setPaymentScreenshotUrl(url); setPaymentScreenshotUploaded(true) }}
+          onContinue={() => setStep(STEP.DONE)}
+          t={t}
+        />
+      )}
+
+      {step !== STEP.LOCATION && step !== STEP.PAYMENT && (
         <div className="sticky-footer">
           {step !== STEP.PATIENT && step !== STEP.PRESCRIPTION && (
             <div className="sticky-footer__summary">
@@ -500,6 +554,74 @@ function ScheduleStep({ date, setDate, t }) {
   )
 }
 
+function PaymentStep({ info, bookingId, screenshotUrl, onScreenshotUploaded, onContinue, t }) {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+  const uploaded = !!screenshotUrl
+
+  async function handleFile(file) {
+    setError('')
+    setUploading(true)
+    try {
+      const url = await uploadPaymentScreenshot(bookingId, file)
+      onScreenshotUploaded(url)
+    } catch (err) {
+      setError(err.message || 'Could not upload the screenshot. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="payment-step">
+      <h2 className="section-title">{t('step_payment')}</h2>
+      <p className="payment-step__amount">₹{info.amount}</p>
+      <span className="payment-step__due-label">{t('payment_dueLabel')}</span>
+
+      {info.method === 'razorpay' ? (
+        <>
+          <a className="btn btn--primary btn--block" href={info.link} target="_blank" rel="noreferrer">
+            {t('payment_payNowBtn')}
+          </a>
+          <p className="payment-step__hint">{t('payment_gatewayNote')}</p>
+          <button type="button" className="btn btn--ghost btn--block" onClick={onContinue}>
+            {t('payment_continueBtn')}
+          </button>
+        </>
+      ) : uploaded ? (
+        <>
+          <div className="payment-step__icon">⏳</div>
+          <p className="payment-step__hint">{t('payment_screenshotReceived')}</p>
+          <img src={screenshotUrl} alt="Uploaded screenshot" className="payment-step__proof-preview" />
+          <button type="button" className="btn btn--primary btn--block" onClick={onContinue}>
+            {t('payment_continueBtn')}
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="payment-step__hint">{t('payment_scanHint')}</p>
+          <img src={upiLinkToQrImageUrl(info.link)} alt="UPI QR code" className="payment-step__qr" />
+          <a className="btn btn--secondary btn--block" href={info.link}>{t('payment_payNowBtn')}</a>
+          <label className="btn btn--primary btn--block">
+            {uploading ? t('payment_uploading') : t('payment_uploadBtn')}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              disabled={uploading}
+              onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
+            />
+          </label>
+          {error && <p className="field-error">{error}</p>}
+          <button type="button" className="payment-step__skip" onClick={onContinue}>
+            {t('payment_payLater')}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 function DetailsStep({ name, setName, phone, setPhone, error, t }) {
   return (
     <div className="details-step">
@@ -517,7 +639,7 @@ function DetailsStep({ name, setName, phone, setPhone, error, t }) {
   )
 }
 
-function ConfirmationScreen({ bookingId, prescriptionUploadError, onHome, t }) {
+function ConfirmationScreen({ bookingId, prescriptionUploadError, paymentInfo, paymentScreenshotUploaded, onHome, t }) {
   const cardRef = useRef(null)
   const [saving, setSaving] = useState(false)
 
@@ -545,6 +667,15 @@ function ConfirmationScreen({ bookingId, prescriptionUploadError, onHome, t }) {
         <p className="confirmation-screen__id">{t('bookingId')}: {bookingId?.slice(0, 8).toUpperCase()}</p>
         <p className="confirmation-screen__hours">{t('storeHoursNote')}</p>
         <p className="confirmation-screen__note">{t('confirmationNote')} 8112060205</p>
+        {paymentInfo && (
+          <p className="confirmation-screen__payment">
+            {paymentScreenshotUploaded
+              ? `${t('payment_screenshotReceived')}`
+              : paymentInfo.method === 'razorpay'
+                ? `₹${paymentInfo.amount} — ${t('payment_gatewayNote')}`
+                : `₹${paymentInfo.amount} pending — you can pay any time at the link sent to you.`}
+          </p>
+        )}
       </div>
       {prescriptionUploadError && (
         <p className="confirmation-screen__warning">
