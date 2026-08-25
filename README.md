@@ -47,7 +47,11 @@ already run for the admin panel):
    score and summary for each uploaded prescription.
 5. `supabase/pages_announcements_ai_packages.sql` — legal pages,
    announcements, and the AI package-suggestion queue.
-6. `supabase/fix_prescriptions_bucket_public.sql` — fixes a bug where
+6. `supabase/RUN_THIS_FIRST_prescriptions_fix.sql` — **run this if
+   prescription uploads fail with "new row violates row-level security
+   policy"**. Self-contained fix for when the original migration below
+   never fully ran; safe to re-run.
+6b. `supabase/fix_prescriptions_bucket_public.sql` — fixes a bug where
    uploaded prescription photos could silently fail to display (see
    "What's new" below). Safe to re-run.
 7. `supabase/payment_v2_and_announcement_poster.sql` — adds the
@@ -66,6 +70,8 @@ depend on it.
   customer can now see the QR (or a "Pay Now" button for gateway
   payments) at `/pay/:bookingId`, and upload a screenshot as proof for
   UPI payments. This used to only be visible inside the admin panel.
+  **(Superseded below — payment is now collected inline during
+  booking; this page is kept only as a fallback/resend link.)**
 - **Prescription photo bug fix** — photos customers uploaded were
   sometimes not rendering anywhere (including for admin) because the
   storage bucket wasn't always created as public. Run
@@ -75,6 +81,20 @@ depend on it.
 - **Animated hero** — the home screen now has a lightweight,
   continuously-looping heartbeat-line animation and a few soft drifting
   accents behind the logo (pure CSS, respects reduced-motion settings).
+- **Date picker respects collection hours** — since collection hours end
+  at 9 PM, "today" is no longer offered as a bookable date after 9 PM;
+  the picker starts from tomorrow instead. Before this fix, a customer
+  booking late at night could pick a same-day slot that had already
+  passed.
+- **Payment collected inline during booking (new)** — admin sets one
+  global rule in the admin Payments tab (Full payment, or Partial — a
+  fixed % of the total), and it applies the same way to every booking.
+  Right after a customer taps "Confirm booking", if payment collection
+  is on, they see a Payment step in the same flow: a UPI QR (scan, pay,
+  upload a screenshot as proof) or a Razorpay "Pay Now" button —
+  before reaching the "Booking Confirmed" screen. No separate step or
+  link needed afterward. Run `supabase/payment_v3_integrated_flow.sql`
+  for this (see the admin app's README for full setup).
 
 ## Edge Functions
 
