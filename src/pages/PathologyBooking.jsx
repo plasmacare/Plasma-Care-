@@ -9,7 +9,7 @@ import {
   uploadPrescription, analyzePrescription, savePrescriptionAiResult, savePrescriptionUploadError,
 } from '../lib/booking'
 import {
-  fetchPaymentSettings, createPaymentRequest, upiLinkToQrImageUrl, uploadPaymentScreenshot,
+  fetchPaymentSettings, createPaymentRequest, upiLinkToQrImageUrl, uploadPaymentScreenshot, fetchBookingPayment,
 } from '../lib/payment'
 import './PathologyBooking.css'
 
@@ -68,6 +68,8 @@ export default function PathologyBooking() {
   const [patientBloodGroup, setPatientBloodGroup] = useState('')
   const [paymentSettings, setPaymentSettings] = useState(null)
   const [paymentInfo, setPaymentInfo] = useState(null) // { amount, method, link }
+  const [paymentError, setPaymentError] = useState('')
+  const [createdBooking, setCreatedBooking] = useState(null)
   const [paymentScreenshotUrl, setPaymentScreenshotUrl] = useState('')
   const [paymentScreenshotUploaded, setPaymentScreenshotUploaded] = useState(false)
 
@@ -176,18 +178,10 @@ export default function PathologyBooking() {
         await savePrescriptionAiResult(booking.id, aiResult).catch(() => {})
       }
       setBookingId(booking.id)
+      setCreatedBooking(booking)
 
       if (paymentSettings?.enabled) {
-        try {
-          const info = await createPaymentRequest(booking, paymentSettings)
-          setPaymentInfo(info)
-          setStep(STEP.PAYMENT)
-        } catch (payErr) {
-          // Payment setup failing shouldn't strand the customer — booking
-          // is already confirmed, admin can create the request manually.
-          console.error('Payment request failed:', payErr)
-          setStep(STEP.DONE)
-        }
+        await attemptPaymentRequest(booking, paymentSettings)
       } else {
         setStep(STEP.DONE)
       }
@@ -195,6 +189,22 @@ export default function PathologyBooking() {
       setFormError('Could not create your booking. Please try again.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function attemptPaymentRequest(booking, settings) {
+    setPaymentError('')
+    try {
+      const info = await createPaymentRequest(booking, settings)
+      setPaymentInfo(info)
+      setStep(STEP.PAYMENT)
+    } catch (payErr) {
+      // Payment is compulsory when enabled — don't let a setup failure
+      // silently skip straight to confirmation. Show the payment step
+      // with an error and a retry, instead of completing the booking.
+      console.error('Payment request failed:', payErr)
+      setPaymentError(payErr?.message || 'Could not set up payment. Please try again.')
+      setStep(STEP.PAYMENT)
     }
   }
 
@@ -274,9 +284,11 @@ export default function PathologyBooking() {
         />
       )}
 
-      {step === STEP.PAYMENT && paymentInfo && (
+      {step === STEP.PAYMENT && (
         <PaymentStep
           info={paymentInfo}
+          error={paymentError}
+          onRetry={() => attemptPaymentRequest(createdBooking, paymentSettings)}
           bookingId={bookingId}
           screenshotUrl={paymentScreenshotUrl}
           onScreenshotUploaded={(url) => { setPaymentScreenshotUrl(url); setPaymentScreenshotUploaded(true) }}
@@ -449,10 +461,12 @@ function PrescriptionStep({ file, setFile, t }) {
 
 function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, aiResult, t }) {
   const [query, setQuery] = useState('')
+  const [expandedPackageId, setExpandedPackageId] = useState(null)
   const q = query.trim().toLowerCase()
   const filteredPackages = q ? packages.filter((p) => p.name.toLowerCase().includes(q)) : packages
   const filteredTests = q ? tests.filter((tItem) => tItem.name.toLowerCase().includes(q)) : tests
   const aiApplied = aiResult && (aiResult.confidence ?? 0) >= AI_CONFIDENCE_THRESHOLD
+  const testsById = useMemo(() => Object.fromEntries(tests.map((tItem) => [tItem.id, tItem])), [tests])
 
   return (
     <div className="tests-step">
@@ -475,16 +489,49 @@ function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, t
 
       <h2 className="section-title">{t('packages')}</h2>
       <div className="item-list">
-        {filteredPackages.map((p) => (
-          <label key={p.id} className={`item-row ${selectedPackages.includes(p.id) ? 'is-selected' : ''}`}>
-            <input type="checkbox" checked={selectedPackages.includes(p.id)} onChange={() => togglePackage(p.id)} />
-            <div className="item-row__info">
-              <span className="item-row__name">{p.name}</span>
-              <span className="item-row__desc">{p.description}</span>
+        {filteredPackages.map((p) => {
+          const includedTests = (p.included_tests || []).map((id) => testsById[id]).filter(Boolean)
+          const isExpanded = expandedPackageId === p.id
+          return (
+            <div key={p.id} className={`package-card ${selectedPackages.includes(p.id) ? 'is-selected' : ''}`}>
+              <div className="item-row item-row--package">
+                <input type="checkbox" checked={selectedPackages.includes(p.id)} onChange={() => togglePackage(p.id)} />
+                <button
+                  type="button"
+                  className="item-row__info item-row__info--tappable"
+                  onClick={() => setExpandedPackageId(isExpanded ? null : p.id)}
+                >
+                  <span className="item-row__name">{p.name}</span>
+                  <span className="item-row__desc">
+                    {p.description}
+                    {includedTests.length > 0 && ` · ${includedTests.length} ${t('testsIncludedLabel')}`}
+                  </span>
+                </button>
+                <span className="item-row__price">₹{p.price}</span>
+                {includedTests.length > 0 && (
+                  <button
+                    type="button"
+                    className={`package-card__chevron${isExpanded ? ' package-card__chevron--open' : ''}`}
+                    onClick={() => setExpandedPackageId(isExpanded ? null : p.id)}
+                    aria-label={t('testsIncludedLabel')}
+                  >
+                    <ChevronIcon />
+                  </button>
+                )}
+              </div>
+              {isExpanded && includedTests.length > 0 && (
+                <div className="package-card__drawer">
+                  <span className="package-card__drawer-title">{t('testsIncludedLabel')}</span>
+                  <ul>
+                    {includedTests.map((tItem) => (
+                      <li key={tItem.id}>{tItem.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
-            <span className="item-row__price">₹{p.price}</span>
-          </label>
-        ))}
+          )
+        })}
         {filteredPackages.length === 0 && <p className="empty-note">{t('noResults')}</p>}
       </div>
 
@@ -554,22 +601,87 @@ function ScheduleStep({ date, setDate, t }) {
   )
 }
 
-function PaymentStep({ info, bookingId, screenshotUrl, onScreenshotUploaded, onContinue, t }) {
+function PaymentStep({ info, error, onRetry, bookingId, screenshotUrl, onScreenshotUploaded, onContinue, t }) {
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState('')
+  const [uploadError, setUploadError] = useState('')
+  const [retrying, setRetrying] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [gatewayConfirmed, setGatewayConfirmed] = useState(false)
   const uploaded = !!screenshotUrl
 
+  // Razorpay ("Gateway") payments confirm via webhook in the background —
+  // poll the booking every few seconds so this step can move on by
+  // itself the moment it's actually paid, with no way to skip ahead of it.
+  useEffect(() => {
+    if (!info || info.method !== 'razorpay' || gatewayConfirmed) return
+    const id = setInterval(async () => {
+      try {
+        const booking = await fetchBookingPayment(bookingId)
+        if (booking.payment_status === 'paid') {
+          setGatewayConfirmed(true)
+          clearInterval(id)
+          onContinue()
+        }
+      } catch {
+        // transient network hiccup — next tick will retry
+      }
+    }, 4000)
+    return () => clearInterval(id)
+  }, [info, bookingId, gatewayConfirmed]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleFile(file) {
-    setError('')
+    setUploadError('')
     setUploading(true)
     try {
       const url = await uploadPaymentScreenshot(bookingId, file)
       onScreenshotUploaded(url)
     } catch (err) {
-      setError(err.message || 'Could not upload the screenshot. Please try again.')
+      setUploadError(err.message || 'Could not upload the screenshot. Please try again.')
     } finally {
       setUploading(false)
     }
+  }
+
+  async function handleRetry() {
+    setRetrying(true)
+    try {
+      await onRetry()
+    } finally {
+      setRetrying(false)
+    }
+  }
+
+  async function handleCheckNow() {
+    setChecking(true)
+    try {
+      const booking = await fetchBookingPayment(bookingId)
+      if (booking.payment_status === 'paid') {
+        setGatewayConfirmed(true)
+        onContinue()
+      }
+    } catch {
+      // ignore — they can just try again
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  if (!info) {
+    return (
+      <div className="payment-step">
+        <h2 className="section-title">{t('step_payment')}</h2>
+        <p className="payment-step__hint payment-step__hint--error">
+          {error || 'Something went wrong setting up payment.'}
+        </p>
+        <p className="payment-step__hint">
+          Your booking details are saved — payment is required to finish. Please retry, or call/WhatsApp us at
+          8112060205 if this keeps happening.
+        </p>
+        <button type="button" className="btn btn--primary btn--block" disabled={retrying} onClick={handleRetry}>
+          {retrying ? 'Retrying…' : 'Retry payment setup'}
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -584,8 +696,12 @@ function PaymentStep({ info, bookingId, screenshotUrl, onScreenshotUploaded, onC
             {t('payment_payNowBtn')}
           </a>
           <p className="payment-step__hint">{t('payment_gatewayNote')}</p>
-          <button type="button" className="btn btn--ghost btn--block" onClick={onContinue}>
-            {t('payment_continueBtn')}
+          <div className="payment-step__waiting">
+            <span className="payment-step__spinner" />
+            Waiting for payment confirmation…
+          </div>
+          <button type="button" className="btn btn--ghost btn--block" disabled={checking} onClick={handleCheckNow}>
+            {checking ? 'Checking…' : "I've paid — check now"}
           </button>
         </>
       ) : uploaded ? (
@@ -612,10 +728,10 @@ function PaymentStep({ info, bookingId, screenshotUrl, onScreenshotUploaded, onC
               onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
             />
           </label>
-          {error && <p className="field-error">{error}</p>}
-          <button type="button" className="payment-step__skip" onClick={onContinue}>
-            {t('payment_payLater')}
-          </button>
+          {uploadError && <p className="field-error">{uploadError}</p>}
+          <p className="payment-step__hint payment-step__hint--small">
+            Payment is required to complete this booking — upload a screenshot once you've paid to continue.
+          </p>
         </>
       )}
     </div>
@@ -704,4 +820,7 @@ function CheckIcon() {
 }
 function SearchIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--slate)" strokeWidth="1.8"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+}
+function ChevronIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--slate)" strokeWidth="2.2"><path d="M6 9l6 6 6-6" /></svg>
 }
