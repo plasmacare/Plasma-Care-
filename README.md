@@ -66,6 +66,20 @@ depend on it.
 
 ## What's new in this update
 
+- **Payment is now mandatory when admin has it on** — no more "I'll pay
+  later" skip. UPI requires a screenshot upload before the flow can
+  finish; Razorpay now polls in the background and only continues once
+  the webhook confirms payment. A broken payment setup (e.g. a missing
+  Razorpay secret) now shows a retry screen instead of silently letting
+  the booking through unpaid.
+- **Package details drawer** — tapping a package name in the Tests step
+  now expands a drawer listing exactly which individual tests are
+  included, instead of just showing a price with no breakdown.
+- **Site-wide animation** — the flowing/pulsing animation used to only
+  live behind the home page logo; it's now a subtle, continuous
+  backdrop (drifting blood cells, pulsing neuron links, rising bubbles)
+  behind every page, not just the home screen. Still pure CSS,
+  low-opacity, and respects reduced-motion settings.
 - **Payment page** — after admin requests payment for a booking, the
   customer can now see the QR (or a "Pay Now" button for gateway
   payments) at `/pay/:bookingId`, and upload a screenshot as proof for
