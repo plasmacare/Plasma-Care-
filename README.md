@@ -66,6 +66,29 @@ depend on it.
 
 ## What's new in this update
 
+- **A blank page now shows a real message** — if a deployment is
+  missing `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`, the site used
+  to fail completely silently (a totally blank white page, with the
+  only clue being a console error invisible on a phone with no
+  devtools). It now shows an actual on-screen message explaining what's
+  missing. This doesn't fix a missing env var for you — it just makes
+  it visible instead of an unexplained blank page.
+
+  **If you see a blank page (or this new message) on the live site**:
+  this repo deploys via `.github/workflows/deploy.yml`, which reads
+  `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (and
+  `VITE_MAPPLS_API_KEY`) from **GitHub repo Secrets** — not from a
+  `.env` file, which only matters for local dev. Check:
+  1. GitHub repo → **Settings → Secrets and variables → Actions** —
+     confirm those secrets still exist with correct values.
+  2. GitHub repo → **Settings → Pages** — confirm **Source** is set to
+     **GitHub Actions** (toggling the repo private/public can
+     occasionally reset this).
+  3. GitHub repo → **Actions** tab — open the latest "Deploy to GitHub
+     Pages" run and check it succeeded. If nothing ran recently (e.g.
+     after making the repo public again), click **Run workflow**
+     manually, or push any small commit to `main` to trigger it.
+
 - **Payment is now mandatory when admin has it on** — no more "I'll pay
   later" skip. UPI requires a screenshot upload before the flow can
   finish; Razorpay now polls in the background and only continues once
