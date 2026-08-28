@@ -36,7 +36,32 @@ export async function createPaymentRequest(booking, settings) {
         description: `Plasma Care booking ${booking.id.slice(0, 8).toUpperCase()}`,
       },
     })
-    if (error) throw error
+    if (error) {
+      // supabase-js shows this exact generic message when the fetch to
+      // the function's URL never got a response at all — almost always
+      // because the `create-payment-link` Edge Function hasn't been
+      // deployed yet, not a problem with this booking or this code.
+      if (String(error.message || '').includes('Failed to send a request')) {
+        throw new Error(
+          'Payment setup isn\u2019t reachable — the create-payment-link Edge Function likely hasn\u2019t been deployed yet. See the admin README\u2019s Razorpay setup section.',
+        )
+      }
+      // The function itself is reachable but responded with an error
+      // status (400/500/502) — our function always returns a JSON body
+      // like {error, details} even on failure, so read the *real*
+      // reason out of the response instead of showing the SDK's
+      // generic "non-2xx status code" wrapper text.
+      if (error.context && typeof error.context.json === 'function') {
+        try {
+          const body = await error.context.clone().json()
+          const detail = body?.details?.error?.description || body?.details?.error?.reason
+          throw new Error([body?.error, detail].filter(Boolean).join(' — ') || error.message)
+        } catch (parseErr) {
+          if (parseErr instanceof Error && parseErr.message !== error.message) throw parseErr
+        }
+      }
+      throw error
+    }
     link = data.link
     razorpayPaymentLinkId = data.id
   } else {
