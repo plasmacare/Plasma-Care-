@@ -66,6 +66,22 @@ depend on it.
 
 ## What's new in this update
 
+- **Blood-drop "glass wall" hero animation** — the home screen can now
+  show falling blood-drop animation styled like the inner wall of a
+  glass test tube, toggleable from the admin **Views** tab: **Off**,
+  **Low** (CSS/SVG, no WebGL, safe on any phone), or **High** (real
+  Three.js/WebGL glass-like drops). Changes apply live on the customer
+  site with no redeploy. Auto-degrades to Low if a device has no WebGL
+  even when High is selected, and turns off entirely if the visitor's
+  OS has "reduce motion" on, regardless of the admin setting.
+  Run `supabase/site_settings_and_analytics.sql` for this.
+  New dependency: `three` — run `npm install` before building.
+- **Page-view analytics** — every page load is now logged (session,
+  path, and a rough city-level location from the visitor's IP), and a
+  live-viewer "who's on the site right now" presence channel runs for
+  as long as a tab is open. Feeds the new admin Views tab. Same SQL
+  file as above adds this.
+
 - **A blank page now shows a real message** — if a deployment is
   missing `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`, the site used
   to fail completely silently (a totally blank white page, with the
