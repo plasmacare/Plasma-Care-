@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PulseDivider from '../components/PulseDivider'
 import HeroBackground from '../components/HeroBackground'
+import BloodDropWall from '../components/BloodDropWall'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import AnnouncementPopup from '../components/AnnouncementPopup'
 import { useLanguage } from '../lib/i18n.jsx'
@@ -45,6 +46,7 @@ export default function Home() {
 
   return (
     <div className="home">
+      <BloodDropWall />
       <AnnouncementPopup />
       <div className="home__top-bar">
         <LanguageSwitcher />
