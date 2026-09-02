@@ -1,0 +1,135 @@
+import { useEffect, useState } from 'react'
+import { supabase } from '../../../lib/supabase'
+
+export default function B2BRequestsTab() {
+  const [rows, setRows] = useState(null)
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
+
+  async function load() {
+    const { data, error } = await supabase
+      .from('b2b_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) setError(error.message)
+    else setRows(data)
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function approve(row) {
+    setBusyId(row.id)
+    setError('')
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/approve-b2b-request`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
+          body: JSON.stringify({ request_id: row.id }),
+        },
+      )
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.error || 'Approval failed')
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function reject(row) {
+    setBusyId(row.id)
+    setError('')
+    try {
+      const { error } = await supabase
+        .from('b2b_requests')
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+        .eq('id', row.id)
+      if (error) throw error
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  if (rows === null) return <div className="tab-panel">Loading…</div>
+
+  const pending = rows.filter((r) => r.status === 'pending')
+  const resolved = rows.filter((r) => r.status !== 'pending')
+
+  return (
+    <div className="tab-panel">
+      {error && <p className="login-error">{error}</p>}
+
+      <h3 style={{ marginBottom: 12 }}>Pending ({pending.length})</h3>
+      {pending.length === 0 && <p style={{ color: '#666' }}>Koi pending request nahi hai.</p>}
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Contact</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>GSTIN</th>
+            <th>Message</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {pending.map((row) => (
+            <tr key={row.id}>
+              <td>{row.company_name}</td>
+              <td>{row.contact_name}</td>
+              <td>{row.email}</td>
+              <td>{row.phone}</td>
+              <td>{row.gstin || '—'}</td>
+              <td style={{ maxWidth: 200 }}>{row.message || '—'}</td>
+              <td style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn--primary" disabled={busyId === row.id} onClick={() => approve(row)}>
+                  {busyId === row.id ? '…' : 'Approve'}
+                </button>
+                <button className="btn btn--ghost" disabled={busyId === row.id} onClick={() => reject(row)}>
+                  Reject
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {resolved.length > 0 && (
+        <>
+          <h3 style={{ margin: '24px 0 12px' }}>Past requests</h3>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Email</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resolved.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.company_name}</td>
+                  <td>{row.email}</td>
+                  <td style={{ textTransform: 'capitalize' }}>{row.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
+  )
+}
