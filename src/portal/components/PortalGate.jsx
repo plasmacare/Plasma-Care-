@@ -16,7 +16,7 @@ export default function PortalGate({ allow, children }) {
   if (!accountType) {
     return (
       <div className="admin-splash">
-        <p>Aapka account abhi tak set up nahi hua. Admin se sampark karein.</p>
+        <p>Your account isn't set up yet. Please contact an admin.</p>
       </div>
     )
   }

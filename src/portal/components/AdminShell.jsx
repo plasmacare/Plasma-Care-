@@ -14,6 +14,7 @@ import PaymentsTab from '../pages/staff/PaymentsTab'
 import ViewsTab from '../pages/staff/ViewsTab'
 import StaffAccessTab from '../pages/staff/StaffAccessTab'
 import B2BRequestsTab from '../pages/staff/B2BRequestsTab'
+import '../styles/admin.css'
 
 const ALL_TAB_DEFS = [
   { key: 'bookings', label: 'Bookings' },
