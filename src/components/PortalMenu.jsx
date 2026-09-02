@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import './PortalMenu.css'
 
+// Public-facing menu — B2B options only. Staff/Admin sign in at the same
+// /portal/login URL, but that isn't advertised here on purpose.
 export default function PortalMenu() {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -21,8 +23,8 @@ export default function PortalMenu() {
   return (
     <div className="portal-menu" ref={ref}>
       <button className="portal-menu__trigger" onClick={() => setOpen((o) => !o)} type="button">
-        <UserIcon />
-        <span>Portal Login</span>
+        <BriefcaseIcon small />
+        <span>B2B Login</span>
         <ChevronIcon open={open} />
       </button>
 
@@ -43,25 +45,12 @@ export default function PortalMenu() {
               <span>Request access</span>
             </div>
           </Link>
-
-          <div className="portal-menu__divider" />
-
-          <Link to="/portal/login" className="portal-menu__item" onClick={() => setOpen(false)}>
-            <ShieldIcon />
-            <div>
-              <strong>Staff / Admin Login</strong>
-              <span>Internal team only</span>
-            </div>
-          </Link>
         </div>
       )}
     </div>
   )
 }
 
-function UserIcon() {
-  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 4-6 8-6s8 2 8 6" /></svg>
-}
 function ChevronIcon({ open }) {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
@@ -70,11 +59,10 @@ function ChevronIcon({ open }) {
     </svg>
   )
 }
-function BriefcaseIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
-}
-function ShieldIcon() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" /></svg>
+function BriefcaseIcon({ small }) {
+  const s = small ? 15 : 18
+  const stroke = small ? 'currentColor' : 'var(--navy-950)'
+  return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8"><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
 }
 function PlusIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></svg>
