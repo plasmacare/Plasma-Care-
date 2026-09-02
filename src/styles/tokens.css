@@ -33,11 +33,20 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+html { min-height: 100dvh; }
 body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  /* Keeps content from being clipped by the status/nav bar when this
+     runs edge-to-edge inside the Android WebView build. On a normal
+     mobile/desktop browser these env() values are just 0. */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  min-height: 100dvh;
 }
 h1, h2, h3 { font-family: var(--font-display); margin: 0; }
 p { margin: 0; }
