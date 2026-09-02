@@ -10,6 +10,7 @@ import B2BShell from './pages/b2b/B2BShell'
 import B2BDashboard from './pages/b2b/B2BDashboard'
 import B2BBulkAdd from './pages/b2b/B2BBulkAdd'
 import B2BHistory from './pages/b2b/B2BHistory'
+import './pages/portal.css'
 
 // Mounted at /portal/* from the main App.jsx, behind React.lazy — none
 // of this (Supabase MFA, admin tabs, B2B forms) is in the public bundle
