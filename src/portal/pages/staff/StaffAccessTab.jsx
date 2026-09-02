@@ -66,9 +66,8 @@ export default function StaffAccessTab() {
   return (
     <div className="tab-panel">
       <p style={{ marginBottom: 16, color: '#666' }}>
-        Naya login banane ke liye pehle Supabase Dashboard → Authentication → Users
-        mein user add karo (email + password). Wo yahan apne aap ek row ke saath
-        list mein aa jayega — role aur tabs yahin se set karo.
+        To create a new login, first add a user in Supabase Dashboard → Authentication → Users
+        (email + password). They'll automatically show up here as a row — set their role and tabs from this screen.
       </p>
       {error && <p className="login-error">{error}</p>}
 

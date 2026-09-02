@@ -72,7 +72,7 @@ export default function B2BRequestsTab() {
       {error && <p className="login-error">{error}</p>}
 
       <h3 style={{ marginBottom: 12 }}>Pending ({pending.length})</h3>
-      {pending.length === 0 && <p style={{ color: '#666' }}>Koi pending request nahi hai.</p>}
+      {pending.length === 0 && <p style={{ color: '#666' }}>No pending requests.</p>}
       <table className="admin-table">
         <thead>
           <tr>
