@@ -4,6 +4,7 @@ import PulseDivider from '../components/PulseDivider'
 import HeroBackground from '../components/HeroBackground'
 import BloodDropWall from '../components/BloodDropWall'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import PortalMenu from '../components/PortalMenu'
 import AnnouncementPopup from '../components/AnnouncementPopup'
 import { useLanguage } from '../lib/i18n.jsx'
 import { fetchAvailableLegalPages } from '../lib/content'
@@ -49,6 +50,7 @@ export default function Home() {
       <BloodDropWall />
       <AnnouncementPopup />
       <div className="home__top-bar">
+        <PortalMenu />
         <LanguageSwitcher />
       </div>
 
