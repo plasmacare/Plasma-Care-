@@ -34,7 +34,7 @@ export default function B2BDashboard() {
       {requests === null ? (
         <p>Loading…</p>
       ) : requests.length === 0 ? (
-        <p style={{ color: 'var(--slate)' }}>Abhi tak koi bulk request nahi hai.</p>
+        <p style={{ color: 'var(--slate)' }}>No bulk requests yet.</p>
       ) : (
         <div className="b2b-table-wrap">
           <table className="b2b-table">

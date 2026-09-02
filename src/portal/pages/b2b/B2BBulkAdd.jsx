@@ -44,11 +44,11 @@ export default function B2BBulkAdd() {
     e.preventDefault()
     setError('')
     if (preview.length === 0) {
-      setError('Kam se kam ek patient add karo (Name, Age, Gender, Phone).')
+      setError('Add at least one patient (Name, Age, Gender, Phone).')
       return
     }
     if (!selectedId) {
-      setError('Package ya test select karo.')
+      setError('Select a package or test.')
       return
     }
     setSubmitting(true)
@@ -74,7 +74,7 @@ export default function B2BBulkAdd() {
       <h2 style={{ color: 'var(--navy-950)', marginBottom: 16 }}>Bulk Add Patients</h2>
 
       <form onSubmit={handleSubmit} className="portal-form">
-        <label>Test ya Package select karo</label>
+        <label>Select a test or package</label>
         <select value={selectionType} onChange={(e) => { setSelectionType(e.target.value); setSelectedId('') }}>
           <option value="package">Package</option>
           <option value="test">Individual Test</option>
@@ -90,7 +90,7 @@ export default function B2BBulkAdd() {
         <label>Preferred date (optional)</label>
         <input type="date" value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} />
 
-        <label>Patients — ek line mein: Name, Age, Gender, Phone</label>
+        <label>Patients — one per line: Name, Age, Gender, Phone</label>
         <textarea
           rows={8}
           placeholder={SAMPLE}
