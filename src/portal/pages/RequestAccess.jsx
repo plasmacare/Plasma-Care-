@@ -25,7 +25,7 @@ export default function RequestAccess() {
       if (error) throw error
       setSubmitted(true)
     } catch (err) {
-      setError(err.message || 'Kuch galat ho gaya, dobara try karo.')
+      setError(err.message || 'Something went wrong, please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -36,11 +36,11 @@ export default function RequestAccess() {
       <div className="portal-screen">
         <div className="portal-card">
           <img src={logoIcon} alt="" className="portal-card__logo" />
-          <h1 className="portal-card__title">Request bhej di gayi</h1>
+          <h1 className="portal-card__title">Request submitted</h1>
           <p className="portal-card__subtitle">
-            Hamari team review karke aapko {form.email} par login details bhej degi.
+            Our team will review it and send login details to {form.email}.
           </p>
-          <Link to="/" className="btn btn--ghost">Home par wapas jao</Link>
+          <Link to="/" className="btn btn--ghost">Back to home</Link>
         </div>
       </div>
     )
@@ -52,7 +52,7 @@ export default function RequestAccess() {
         <img src={logoIcon} alt="" className="portal-card__logo" style={{ display: 'block', margin: '0 auto 12px' }} />
         <h1 className="portal-card__title" style={{ textAlign: 'center' }}>B2B Partner Access</h1>
         <p className="portal-card__subtitle" style={{ textAlign: 'center' }}>
-          Corporate health checkups, bulk bookings — form bharo, hum review karke login bhej denge.
+          Corporate health checkups, bulk bookings — fill the form and we'll review and send login details.
         </p>
 
         <form onSubmit={handleSubmit} className="portal-form">
@@ -74,10 +74,10 @@ export default function RequestAccess() {
           <label>Address</label>
           <textarea rows={2} value={form.address} onChange={(e) => update('address', e.target.value)} />
 
-          <label>Kya chahiye? (optional)</label>
+          <label>What do you need? (optional)</label>
           <textarea
             rows={3}
-            placeholder="e.g. 200 employees ka annual health checkup"
+            placeholder="e.g. Annual health checkup for 200 employees"
             value={form.message}
             onChange={(e) => update('message', e.target.value)}
           />
@@ -90,7 +90,7 @@ export default function RequestAccess() {
         </form>
 
         <p className="portal-card__footer">
-          Pehle se account hai? <Link to="/portal/login">Login karo</Link>
+          Already have an account? <Link to="/portal/login">Log in</Link>
         </p>
       </div>
     </div>

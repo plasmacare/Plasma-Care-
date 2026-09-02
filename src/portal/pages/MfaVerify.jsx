@@ -46,7 +46,7 @@ export default function MfaVerify() {
     <div className="portal-screen">
       <div className="portal-card">
         <h1 className="portal-card__title">Enter 2FA code</h1>
-        <p className="portal-card__subtitle">Apne Authenticator app ka 6-digit code daalo.</p>
+        <p className="portal-card__subtitle">Enter the 6-digit code from your Authenticator app.</p>
 
         <form onSubmit={handleVerify} className="portal-form">
           <input

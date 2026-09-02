@@ -1,3 +1,19 @@
+/* ---------- Shared across every portal screen ---------- */
+.admin-splash {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--slate);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+.login-error { color: var(--red-600); font-size: 12.5px; margin: -6px 0 12px; }
+.tab-panel { display: flex; flex-direction: column; gap: 4px; }
+
 /* ---------- Portal shell (login, MFA, request-access, B2B) ---------- */
 .portal-screen {
   min-height: 100dvh;

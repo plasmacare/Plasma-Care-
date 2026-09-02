@@ -36,7 +36,7 @@ export default function Login() {
       <div className="portal-card">
         <img src={logoIcon} alt="" className="portal-card__logo" />
         <h1 className="portal-card__title">Portal Login</h1>
-        <p className="portal-card__subtitle">Staff, Admin &amp; B2B partner sign-in</p>
+        <p className="portal-card__subtitle">Sign in to your account</p>
 
         <form onSubmit={handleSubmit} className="portal-form">
           <label>Email</label>
@@ -53,8 +53,7 @@ export default function Login() {
         </form>
 
         <p className="portal-card__footer">
-          B2B partner ho aur account nahi hai?{' '}
-          <Link to="/portal/request-access">Request access</Link>
+          New B2B partner? <Link to="/portal/request-access">Request access</Link>
         </p>
       </div>
     </div>

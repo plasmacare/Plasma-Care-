@@ -50,8 +50,7 @@ export default function MfaEnroll() {
       <div className="portal-card">
         <h1 className="portal-card__title">Set up 2FA</h1>
         <p className="portal-card__subtitle">
-          Admin account ke liye ek baar Authenticator app (Google Authenticator, Authy, etc.)
-          setup karna zaroori hai.
+          A one-time Authenticator app setup (Google Authenticator, Authy, etc.) is required for admin accounts.
         </p>
 
         {!enrollment ? (
@@ -59,11 +58,11 @@ export default function MfaEnroll() {
         ) : (
           <>
             <div className="portal-mfa-qr" dangerouslySetInnerHTML={{ __html: enrollment.qrCode }} />
-            <p className="portal-form__hint">QR scan na ho paye toh manually daalo:</p>
+            <p className="portal-form__hint">Can't scan the QR? Enter this code manually:</p>
             <div className="portal-mfa-secret">{enrollment.secret}</div>
 
             <form onSubmit={handleVerify} className="portal-form">
-              <label>App mein dikha 6-digit code</label>
+              <label>6-digit code from your app</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -82,7 +81,7 @@ export default function MfaEnroll() {
         )}
 
         <p className="portal-card__footer">
-          Galat account? <a href="#" onClick={(e) => { e.preventDefault(); logout() }}>Sign out</a>
+          Wrong account? <a href="#" onClick={(e) => { e.preventDefault(); logout() }}>Sign out</a>
         </p>
       </div>
     </div>
