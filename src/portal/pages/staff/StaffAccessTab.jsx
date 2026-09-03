@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchStaffProfiles, updateStaffProfile } from '../../lib/staffAccess'
 import { ALL_TABS } from '../../lib/portalAuth.jsx'
+import { logEvent } from '../../../lib/telemetry'
 
 // b2b-requests isn't assignable here — it's admin-only (the approval
 // action itself is also gated server-side in the edge function).
@@ -9,7 +10,6 @@ const ASSIGNABLE_TABS = ALL_TABS.filter((t) => t !== 'b2b-requests')
 const TAB_LABELS = {
   bookings: 'Bookings',
   catalog: 'Catalog',
-  'ai-packages': 'AI Packages',
   pages: 'Pages',
   announcements: 'Announcements',
   payments: 'Payments',
@@ -47,6 +47,7 @@ export default function StaffAccessTab() {
         is_active: row.is_active,
         full_name: row.full_name,
       })
+      logEvent({ type: 'staff_role_updated', source: 'admin', message: `Updated ${row.email}`, metadata: { target: row.email, role: row.role, allowed_tabs: row.allowed_tabs, is_active: row.is_active } })
       await load()
     } catch (err) {
       setError(err.message)

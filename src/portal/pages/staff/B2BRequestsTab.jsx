@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { logEvent } from '../../../lib/telemetry'
 
 export default function B2BRequestsTab() {
   const [rows, setRows] = useState(null)
@@ -37,6 +38,7 @@ export default function B2BRequestsTab() {
       )
       const body = await res.json()
       if (!res.ok) throw new Error(body.error || 'Approval failed')
+      logEvent({ type: 'b2b_request_approved', source: 'admin', message: `Approved B2B request: ${row.company_name}`, metadata: { request_id: row.id } })
       await load()
     } catch (err) {
       setError(err.message)
@@ -54,6 +56,7 @@ export default function B2BRequestsTab() {
         .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
         .eq('id', row.id)
       if (error) throw error
+      logEvent({ type: 'b2b_request_rejected', source: 'admin', message: `Rejected B2B request: ${row.company_name}`, metadata: { request_id: row.id } })
       await load()
     } catch (err) {
       setError(err.message)
