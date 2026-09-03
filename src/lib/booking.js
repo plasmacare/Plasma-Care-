@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { compressImage } from './imageCompress'
+import { logEvent } from './telemetry'
 
 export async function fetchPackages() {
   const { data, error } = await supabase
@@ -72,6 +73,13 @@ export async function createBooking({
     })
     if (addressError) throw addressError
   }
+
+  logEvent({
+    type: 'booking_created',
+    source: 'customer',
+    message: `New booking: ${bookingType}`,
+    metadata: { booking_id: booking.id, total_amount: totalAmount },
+  })
 
   return booking
 }
