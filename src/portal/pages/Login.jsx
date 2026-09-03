@@ -12,8 +12,9 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
 
   if (session && !loading) {
-    if (role === 'admin' && mfaState === 'needs_enroll') return <Navigate to="/portal/mfa/enroll" replace />
-    if (role === 'admin' && mfaState === 'needs_challenge') return <Navigate to="/portal/mfa/verify" replace />
+    if ((role === 'admin' || role === 'developer') && mfaState === 'needs_enroll') return <Navigate to="/portal/mfa/enroll" replace />
+    if ((role === 'admin' || role === 'developer') && mfaState === 'needs_challenge') return <Navigate to="/portal/mfa/verify" replace />
+    if (role === 'developer') return <Navigate to="/portal/dev" replace />
     if (accountType === 'staff') return <Navigate to="/portal/staff" replace />
     if (accountType === 'b2b') return <Navigate to="/portal/b2b" replace />
   }

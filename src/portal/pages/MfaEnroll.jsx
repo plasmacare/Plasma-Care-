@@ -19,8 +19,8 @@ export default function MfaEnroll() {
     })
   }, [mfaState])
 
-  if (!loading && role !== 'admin') return <Navigate to="/portal/login" replace />
-  if (!loading && mfaState === 'satisfied') return <Navigate to="/portal/staff" replace />
+  if (!loading && role !== 'admin' && role !== 'developer') return <Navigate to="/portal/login" replace />
+  if (!loading && mfaState === 'satisfied') return <Navigate to={role === 'developer' ? '/portal/dev' : '/portal/staff'} replace />
 
   async function handleVerify(e) {
     e.preventDefault()
@@ -50,7 +50,7 @@ export default function MfaEnroll() {
       <div className="portal-card">
         <h1 className="portal-card__title">Set up 2FA</h1>
         <p className="portal-card__subtitle">
-          A one-time Authenticator app setup (Google Authenticator, Authy, etc.) is required for admin accounts.
+          A one-time Authenticator app setup (Google Authenticator, Authy, etc.) is required for this account.
         </p>
 
         {!enrollment ? (

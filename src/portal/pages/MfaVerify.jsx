@@ -10,8 +10,8 @@ export default function MfaVerify() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  if (!loading && role !== 'admin') return <Navigate to="/portal/login" replace />
-  if (!loading && mfaState === 'satisfied') return <Navigate to="/portal/staff" replace />
+  if (!loading && role !== 'admin' && role !== 'developer') return <Navigate to="/portal/login" replace />
+  if (!loading && mfaState === 'satisfied') return <Navigate to={role === 'developer' ? '/portal/dev' : '/portal/staff'} replace />
 
   async function handleVerify(e) {
     e.preventDefault()

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { logEvent } from '../../lib/telemetry'
 import logoIcon from '../assets/logo-icon.png'
 import './portal.css'
 
@@ -23,6 +24,7 @@ export default function RequestAccess() {
     try {
       const { error } = await supabase.from('b2b_requests').insert({ ...form })
       if (error) throw error
+      logEvent({ type: 'b2b_request_submitted', source: 'b2b', message: `New B2B request: ${form.company_name}`, metadata: { email: form.email } })
       setSubmitted(true)
     } catch (err) {
       setError(err.message || 'Something went wrong, please try again.')
