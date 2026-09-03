@@ -15,6 +15,7 @@ export default function Login() {
     if ((role === 'admin' || role === 'developer') && mfaState === 'needs_enroll') return <Navigate to="/portal/mfa/enroll" replace />
     if ((role === 'admin' || role === 'developer') && mfaState === 'needs_challenge') return <Navigate to="/portal/mfa/verify" replace />
     if (role === 'developer') return <Navigate to="/portal/dev" replace />
+    if (role === 'collector') return <Navigate to="/portal/collector" replace />
     if (accountType === 'staff') return <Navigate to="/portal/staff" replace />
     if (accountType === 'b2b') return <Navigate to="/portal/b2b" replace />
   }
