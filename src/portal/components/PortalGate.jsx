@@ -1,8 +1,11 @@
 import { Navigate } from 'react-router-dom'
 import { usePortalAuth } from '../lib/portalAuth.jsx'
 
-// allow: 'staff' | 'b2b' | 'any' — which account type this route is for
-export default function PortalGate({ allow, children }) {
+// allow: 'staff' | 'b2b' | 'any' — which account type this route is for.
+// requireRole (optional): an exact staff_profiles.role required, on top
+// of accountType — used for the Dev Pulse page so ordinary admin/staff
+// can't reach it just by being "staff" type.
+export default function PortalGate({ allow, requireRole, children }) {
   const { session, accountType, role, mfaState, loading } = usePortalAuth()
 
   if (loading) {
@@ -25,9 +28,17 @@ export default function PortalGate({ allow, children }) {
     return <Navigate to="/portal/login" replace />
   }
 
-  // Admin must have TOTP enrolled + verified for this session before
-  // reaching any staff panel content.
-  if (role === 'admin') {
+  if (requireRole && role !== requireRole) {
+    return (
+      <div className="admin-splash">
+        <p>You don't have access to this page.</p>
+      </div>
+    )
+  }
+
+  // Admin and developer both need TOTP enrolled + verified for this
+  // session before reaching any protected content.
+  if (role === 'admin' || role === 'developer') {
     if (mfaState === 'needs_enroll') return <Navigate to="/portal/mfa/enroll" replace />
     if (mfaState === 'needs_challenge') return <Navigate to="/portal/mfa/verify" replace />
   }

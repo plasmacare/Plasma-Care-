@@ -7,7 +7,6 @@ import NotificationBanner from './NotificationBanner'
 import logoIcon from '../assets/logo-icon.png'
 import Dashboard from '../pages/staff/Dashboard'
 import CatalogTab from '../pages/staff/CatalogTab'
-import AiPackagesTab from '../pages/staff/AiPackagesTab'
 import PagesTab from '../pages/staff/PagesTab'
 import AnnouncementsTab from '../pages/staff/AnnouncementsTab'
 import PaymentsTab from '../pages/staff/PaymentsTab'
@@ -19,7 +18,6 @@ import '../styles/admin.css'
 const ALL_TAB_DEFS = [
   { key: 'bookings', label: 'Bookings' },
   { key: 'catalog', label: 'Catalog' },
-  { key: 'ai-packages', label: 'AI Packages' },
   { key: 'pages', label: 'Pages' },
   { key: 'announcements', label: 'Announcements' },
   { key: 'payments', label: 'Payments' },
@@ -106,7 +104,6 @@ export default function AdminShell() {
 
           {tab === 'bookings' && <Dashboard />}
           {tab === 'catalog' && <CatalogTab />}
-          {tab === 'ai-packages' && <AiPackagesTab />}
           {tab === 'pages' && <PagesTab />}
           {tab === 'announcements' && <AnnouncementsTab />}
           {tab === 'payments' && <PaymentsTab />}
