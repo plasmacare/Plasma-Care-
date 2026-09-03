@@ -75,3 +75,38 @@ Purana `Admin--main` repo ab standalone deploy karne ki zarurat nahi —
 sab kuch is ek repo mein aa gaya hai. Purana repo backup ke liye rakh
 sakte ho, bas use production mein deploy mat karna (do jagah alag-alag
 update hone se confusion hoga).
+
+## Update — Dev Pulse, dropdown nav, Views fix
+
+1. **Run one more SQL file**: `supabase/activity_logs.sql` (after the
+   other two).
+2. **Create the developer account**: same as staff — add a user in
+   Supabase Authentication → Users, then in `staff_profiles` set their
+   `role` to `developer` (Table Editor, same way you promoted admin).
+   They'll go through the same 2FA enroll flow as admin on first login.
+3. Dev Pulse lives at `/portal/dev` — it is **not** a tab inside the
+   staff panel, and admin cannot open it either (`requireRole` on the
+   route checks for exactly `role = 'developer'`).
+4. The AI Packages tab is removed from the staff panel; replaced by the
+   Dev Pulse activity/error feed. The old `AiPackagesTab.jsx` file is
+   still in the repo but unused — safe to delete later if you don't
+   need it back.
+5. Fixed: opening the Views tab no longer crashes. The bug was the
+   merge itself — customer site and admin panel were joining the same
+   Supabase Realtime "site-viewers" channel in one browser tab. The
+   customer-side analytics/presence code now only runs on non-`/portal`
+   routes.
+6. Staff/Admin panel tabs are now a dropdown (tap to open) instead of a
+   horizontal scrolling row, so nothing gets cut off on narrow screens.
+
+## What logEvent() covers right now
+
+Automatic (needs no per-page work): every uncaught JS error/promise
+rejection, anywhere on the site.
+
+Manually instrumented so far: customer booking creation, staff/admin/B2B
+login success+failure, B2B request submitted/approved/rejected, B2B bulk
+request submitted, staff role changes. Add more over time by calling
+`logEvent({ type, source, message, metadata })` from `src/lib/telemetry.js`
+at any other action worth tracking (payment attempts, catalog edits,
+report uploads, etc.) — same pattern everywhere.
