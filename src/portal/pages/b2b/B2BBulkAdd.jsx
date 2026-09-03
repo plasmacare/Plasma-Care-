@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchPackages, fetchTests } from '../../lib/catalogData'
 import { submitBulkRequest } from '../../lib/b2bData'
+import { logEvent } from '../../../lib/telemetry'
 import { usePortalAuth } from '../../lib/portalAuth.jsx'
 
 const SAMPLE = 'Rahul Sharma, 34, Male, 9876543210\nPriya Verma, 28, Female, 9123456780'
@@ -61,6 +62,7 @@ export default function B2BBulkAdd() {
         patients: preview,
         notes,
       })
+      logEvent({ type: 'b2b_bulk_request_submitted', source: 'b2b', message: `Bulk request: ${preview.length} patients`, metadata: { patient_count: preview.length } })
       navigate('/portal/b2b/history')
     } catch (err) {
       setError(err.message)
