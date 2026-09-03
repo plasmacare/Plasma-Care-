@@ -1198,3 +1198,12 @@ body { font-family: var(--font-body); color: var(--ink); }
 }
 .admin-tabs-menu__item:hover { background: var(--paper); }
 .admin-tabs-menu__item--active { background: var(--navy-950); color: #fff; }
+
+/* ---------- Collection-status badges (dispatch) ---------- */
+.badge--unassigned { background: var(--navy-100); color: var(--slate); }
+.badge--assigned { background: #E4EAF3; color: var(--navy-800); }
+.badge--accepted { background: #EAF2FF; color: #2B6CB0; }
+.badge--declined { background: #FDEBEC; color: var(--red-600); }
+.badge--en_route { background: #FFF6E5; color: #8A6D1D; }
+.badge--arrived { background: #F0FBF5; color: #1E7B4D; }
+.badge--collected { background: #E9F7EF; color: #1E7B4D; }
