@@ -40,6 +40,34 @@ export async function updateBookingStaff(id, assignedStaff) {
   if (error) throw error
 }
 
+/** Fetches active collection-staff accounts (role='collector') with their current open-job count, so the admin can see who's free before assigning. */
+export async function fetchCollectorsWithLoad() {
+  const [{ data: collectors, error: cErr }, { data: openJobs, error: jErr }] = await Promise.all([
+    supabase.from('staff_profiles').select('id, full_name, email').eq('role', 'collector').eq('is_active', true),
+    supabase.from('bookings').select('assigned_collector_id')
+      .not('assigned_collector_id', 'is', null)
+      .in('collection_status', ['assigned', 'accepted', 'en_route', 'arrived']),
+  ])
+  if (cErr) throw cErr
+  if (jErr) throw jErr
+  const loadById = {}
+  for (const job of openJobs || []) {
+    loadById[job.assigned_collector_id] = (loadById[job.assigned_collector_id] || 0) + 1
+  }
+  return (collectors || [])
+    .map((c) => ({ ...c, openJobs: loadById[c.id] || 0 }))
+    .sort((a, b) => a.openJobs - b.openJobs)
+}
+
+/** Assigns (or re-assigns) a collector to a home-collection booking. */
+export async function assignCollector(bookingId, collectorId) {
+  const { error } = await supabase
+    .from('bookings')
+    .update({ assigned_collector_id: collectorId || null, collection_status: collectorId ? 'assigned' : 'unassigned' })
+    .eq('id', bookingId)
+  if (error) throw error
+}
+
 export async function updateCallStatus(id, callStatus) {
   const { error } = await supabase.from('bookings').update({ call_status: callStatus }).eq('id', id)
   if (error) throw error
