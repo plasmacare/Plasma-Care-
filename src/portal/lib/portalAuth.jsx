@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
+import { logEvent } from '../../lib/telemetry'
 
 const PortalAuthContext = createContext(null)
 
 // All tabs the staff/admin panel currently has. 'admin' role always sees
 // everything; other roles are limited to their `allowed_tabs`.
 export const ALL_TABS = [
-  'bookings', 'catalog', 'ai-packages', 'pages', 'announcements',
+  'bookings', 'catalog', 'pages', 'announcements',
   'payments', 'views', 'b2b-requests',
 ]
 
@@ -38,7 +39,10 @@ export function PortalAuthProvider({ children }) {
   }
 
   const evaluateMfa = useCallback(async (currentRole) => {
-    if (currentRole !== 'admin') {
+    // Admin AND developer both require 2FA — developer sees the
+    // site-wide activity log (Dev Pulse), which is sensitive enough
+    // to warrant the same protection as admin.
+    if (currentRole !== 'admin' && currentRole !== 'developer') {
       setMfaState('not_required')
       return
     }
@@ -80,7 +84,11 @@ export function PortalAuthProvider({ children }) {
 
   async function login(email, password) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    if (error) {
+      logEvent({ type: 'login_failed', source: 'staff', severity: 'warning', message: `Login failed for ${email}` })
+      throw error
+    }
+    logEvent({ type: 'login_success', source: 'staff', message: `Portal login: ${email}` })
   }
 
   async function logout() {
