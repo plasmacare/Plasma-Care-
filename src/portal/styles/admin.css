@@ -1149,3 +1149,52 @@ body { font-family: var(--font-body); color: var(--ink); }
 .admin-table th, .admin-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border, #e5e7eb); vertical-align: top; }
 .admin-table th { color: var(--slate, #666); font-weight: 600; }
 .admin-table input[type="text"], .admin-table input:not([type]) { border: 1px solid var(--border, #ddd); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+
+/* ---------- Tabs dropdown/drawer (replaces horizontal scroll tabs) ---------- */
+.admin-tabs-menu { position: relative; margin-bottom: 16px; }
+.admin-tabs-menu__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy-950);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.admin-tabs-menu__drawer {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised, 0 8px 24px rgba(11,37,69,0.15));
+  padding: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+  z-index: 20;
+}
+.admin-tabs-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.admin-tabs-menu__item:hover { background: var(--paper); }
+.admin-tabs-menu__item--active { background: var(--navy-950); color: #fff; }
