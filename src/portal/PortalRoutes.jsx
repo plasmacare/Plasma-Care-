@@ -10,6 +10,7 @@ import B2BShell from './pages/b2b/B2BShell'
 import B2BDashboard from './pages/b2b/B2BDashboard'
 import B2BBulkAdd from './pages/b2b/B2BBulkAdd'
 import B2BHistory from './pages/b2b/B2BHistory'
+import DevPulse from './pages/dev/DevPulse'
 import './pages/portal.css'
 
 // Mounted at /portal/* from the main App.jsx, behind React.lazy — none
@@ -45,6 +46,18 @@ export default function PortalRoutes() {
           <Route path="bulk-add" element={<B2BBulkAdd />} />
           <Route path="history" element={<B2BHistory />} />
         </Route>
+
+        {/* Developer-only — separate from the staff panel entirely, not
+            just a hidden tab. requireRole="developer" means even Admin
+            cannot open this by guessing the URL. */}
+        <Route
+          path="dev"
+          element={
+            <PortalGate allow="staff" requireRole="developer">
+              <DevPulse />
+            </PortalGate>
+          }
+        />
       </Routes>
     </PortalAuthProvider>
   )
