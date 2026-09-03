@@ -110,3 +110,36 @@ request submitted, staff role changes. Add more over time by calling
 `logEvent({ type, source, message, metadata })` from `src/lib/telemetry.js`
 at any other action worth tracking (payment attempts, catalog edits,
 report uploads, etc.) — same pattern everywhere.
+
+## Update — Collection staff dispatch (Rapido-rider style)
+
+1. **Run one more SQL file**: `supabase/collection_dispatch.sql` — adds
+   `assigned_collector_id` and `collection_status` to `bookings`, plus
+   RLS so a collector only sees/updates their own assigned bookings.
+   **Read the note inside that file** — it depends on `bookings` RLS
+   already being enabled with an existing admin/staff policy; if admin's
+   booking view breaks after running it, tell me and I'll adjust.
+2. **Create collector accounts**: same pattern as staff/admin/developer
+   — add the person in Authentication → Users, then set their
+   `staff_profiles.role` to `collector`. No 2FA needed for this role.
+3. **Admin side**: in the Bookings tab, home-collection bookings now
+   show a **Collection staff** dropdown instead of the old free-text
+   field, listing active collectors with their current open-job count
+   (so you can see who's free before assigning). Lab-visit bookings keep
+   the old free-text field, since there's no rider workflow for those.
+4. **Collector side**: `/portal/collector` — their own job list (Rapido-
+   style cards): Accept/Decline a new assignment, then Start → Arrived →
+   Mark Collected. Each card has Call and Navigate (opens Google Maps
+   directions to the address) buttons. History tab shows past jobs.
+   Not part of the staff panel — its own route, own dropdown-free UI.
+5. Marking a job "Collected" also flips the booking's main `status` to
+   `sample_collected`, so the existing report/payment flow downstream
+   is untouched.
+
+This covers the core Rapido-style loop (assign → accept → en route →
+arrived → collected) plus call/navigate. Live GPS tracking of the
+collector's position (so admin/patient sees them moving on a map in
+real time, like Rapido does) is a meaningfully bigger feature — needs
+background location permission, which really only works well from a
+native Android wrapper rather than a browser tab — flagging it as a
+natural next step rather than building a half-working version now.
