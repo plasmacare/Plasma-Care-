@@ -11,6 +11,9 @@ import B2BDashboard from './pages/b2b/B2BDashboard'
 import B2BBulkAdd from './pages/b2b/B2BBulkAdd'
 import B2BHistory from './pages/b2b/B2BHistory'
 import DevPulse from './pages/dev/DevPulse'
+import CollectorShell from './pages/collector/CollectorShell'
+import CollectorJobs from './pages/collector/CollectorJobs'
+import CollectorHistory from './pages/collector/CollectorHistory'
 import './pages/portal.css'
 
 // Mounted at /portal/* from the main App.jsx, behind React.lazy — none
@@ -58,6 +61,20 @@ export default function PortalRoutes() {
             </PortalGate>
           }
         />
+
+        {/* Collection staff (rider) portal — own accepted/en-route/
+            arrived/collected workflow, separate from the staff panel. */}
+        <Route
+          path="collector/*"
+          element={
+            <PortalGate allow="staff" requireRole="collector">
+              <CollectorShell />
+            </PortalGate>
+          }
+        >
+          <Route index element={<CollectorJobs />} />
+          <Route path="history" element={<CollectorHistory />} />
+        </Route>
       </Routes>
     </PortalAuthProvider>
   )
