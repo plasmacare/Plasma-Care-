@@ -3,12 +3,14 @@ import {
   fetchLookups, fetchBookings, updateBookingStatus, updateBookingStaff,
   updateCallStatus, updateAdminNotes, setSpamFlag, uploadReport, skipReport, resetReport, deleteBooking,
   updatePrescriptionNotes, computeStats, computeSpamFlags, STATUSES,
+  fetchCollectorsWithLoad, assignCollector,
 } from '../../lib/adminData'
 import { exportBookingsCsv } from '../../lib/csvExport'
 import MapPreview from '../../components/MapPreview'
 import {
   fetchPaymentSettings, createRazorpayLink, savePaymentRequest, markPaymentReceived, computeRequiredAmount,
 } from '../../lib/payments'
+import { logEvent } from '../../../lib/telemetry'
 
 function formatLocalDate(d) {
   const y = d.getFullYear()
@@ -24,6 +26,15 @@ const STATUS_LABEL = {
   report_ready: 'Report Ready',
   completed: 'Completed',
   cancelled: 'Cancelled',
+}
+const COLLECTION_STATUS_LABEL = {
+  unassigned: 'Unassigned',
+  assigned: 'Assigned',
+  accepted: 'Accepted',
+  declined: 'Declined',
+  en_route: 'On the way',
+  arrived: 'Arrived',
+  collected: 'Collected',
 }
 const CALL_STATUS_LABEL = {
   not_called: 'Not called',
@@ -44,10 +55,12 @@ export default function Dashboard() {
   const [search, setSearch] = useState('')
   const [hideSpam, setHideSpam] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
+  const [collectors, setCollectors] = useState([])
 
   useEffect(() => {
     fetchLookups().then(setLookups).catch(() => {})
     fetchPaymentSettings().then(setPaymentSettings).catch(() => {})
+    fetchCollectorsWithLoad().then(setCollectors).catch(() => {})
   }, [])
 
   async function load() {
@@ -106,6 +119,27 @@ export default function Dashboard() {
       await updateBookingStaff(booking.id, staffName)
     } catch (err) {
       setError('Failed to assign staff: ' + err.message)
+    }
+  }
+
+  async function handleCollectorChange(booking, collectorId) {
+    const collector = collectors.find((c) => c.id === collectorId)
+    patch(booking.id, { assigned_collector_id: collectorId || null, collection_status: collectorId ? 'assigned' : 'unassigned' })
+    try {
+      await assignCollector(booking.id, collectorId)
+      logEvent({
+        type: 'collector_assigned',
+        source: 'admin',
+        message: collectorId
+          ? `Assigned ${collector?.full_name || collectorId} to booking ${booking.customer_name}`
+          : `Unassigned collector from booking ${booking.customer_name}`,
+        metadata: { booking_id: booking.id, collector_id: collectorId },
+      })
+      // Load counts are now stale by one job — cheap to just refetch.
+      fetchCollectorsWithLoad().then(setCollectors).catch(() => {})
+    } catch (err) {
+      setError('Failed to assign collector: ' + err.message)
+      load()
     }
   }
 
@@ -246,10 +280,12 @@ export default function Dashboard() {
             booking={b}
             lookups={lookups}
             paymentSettings={paymentSettings}
+            collectors={collectors}
             expanded={expandedId === b.id}
             onToggle={() => setExpandedId(expandedId === b.id ? null : b.id)}
             onStatusChange={(s) => handleStatusChange(b, s)}
             onStaffChange={(s) => handleStaffChange(b, s)}
+            onCollectorChange={(id) => handleCollectorChange(b, id)}
             onCallStatus={(s) => handleCallStatus(b, s)}
             onNotes={(n) => handleNotes(b, n)}
             onSpamToggle={() => handleSpamToggle(b)}
@@ -276,8 +312,8 @@ function StatCard({ label, value, accent }) {
 }
 
 function BookingCard({
-  booking, lookups, paymentSettings, expanded, onToggle, onStatusChange, onStaffChange,
-  onCallStatus, onNotes, onSpamToggle, onDelete, onReportUpload, onReportSkip, onReportReset, onPrescriptionNotes,
+  booking, lookups, paymentSettings, collectors, expanded, onToggle, onStatusChange, onStaffChange,
+  onCollectorChange, onCallStatus, onNotes, onSpamToggle, onDelete, onReportUpload, onReportSkip, onReportReset, onPrescriptionNotes,
   onBookingPatch,
 }) {
   const { packagesById, testsById } = lookups
@@ -380,16 +416,41 @@ function BookingCard({
                 ))}
               </select>
             </label>
-            <label>
-              Assigned staff
-              <input
-                type="text"
-                defaultValue={booking.assigned_staff || ''}
-                placeholder="Staff name"
-                onBlur={(e) => onStaffChange(e.target.value)}
-              />
-            </label>
+            {booking.booking_type === 'home_collection' ? (
+              <label>
+                Collection staff
+                <select
+                  value={booking.assigned_collector_id || ''}
+                  onChange={(e) => onCollectorChange(e.target.value || null)}
+                >
+                  <option value="">— Unassigned —</option>
+                  {collectors.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.full_name || c.email} ({c.openJobs} active)
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label>
+                Assigned staff
+                <input
+                  type="text"
+                  defaultValue={booking.assigned_staff || ''}
+                  placeholder="Staff name"
+                  onBlur={(e) => onStaffChange(e.target.value)}
+                />
+              </label>
+            )}
           </div>
+
+          {booking.booking_type === 'home_collection' && booking.assigned_collector_id && (
+            <p className="booking-card__meta" style={{ marginTop: -4 }}>
+              Collection status: <span className={`badge badge--${booking.collection_status}`}>
+                {COLLECTION_STATUS_LABEL[booking.collection_status] || booking.collection_status}
+              </span>
+            </p>
+          )}
 
           <div className="booking-card__controls">
             <label>
