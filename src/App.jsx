@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import PathologyBooking from './pages/PathologyBooking'
 import LegalPage from './pages/LegalPage'
@@ -12,10 +12,18 @@ import Analytics from './components/Analytics'
 const PortalRoutes = lazy(() => import('./portal/PortalRoutes'))
 
 export default function App() {
+  const location = useLocation()
+  const isPortalRoute = location.pathname.startsWith('/portal')
+
   return (
     <>
       <SiteBackground />
-      <Analytics />
+      {/* Customer-only: page-view logging + the "site-viewers" Presence
+          channel. Must NOT mount on /portal/* — staff/admin/B2B sessions
+          aren't customer traffic, and joining the same Presence channel
+          twice in one tab (once here, once from the Views tab) throws
+          "cannot add presence callbacks after subscribe()". */}
+      {!isPortalRoute && <Analytics />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/book/pathology" element={<PathologyBooking />} />
