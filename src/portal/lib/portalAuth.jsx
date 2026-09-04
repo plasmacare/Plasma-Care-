@@ -8,7 +8,7 @@ const PortalAuthContext = createContext(null)
 // everything; other roles are limited to their `allowed_tabs`.
 export const ALL_TABS = [
   'bookings', 'catalog', 'pages', 'announcements',
-  'payments', 'views', 'b2b-requests',
+  'payments', 'views', 'b2b-requests', 'collections',
 ]
 
 export function PortalAuthProvider({ children }) {
