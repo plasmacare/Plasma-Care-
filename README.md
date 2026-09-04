@@ -66,29 +66,6 @@ depend on it.
 
 ## What's new in this update
 
-- **Generate branded lab report PDFs** — from a booking's detail in the
-  staff/admin **Bookings** tab, tap **Generate report**: pick (or add) a
-  doctor with a pre-saved signature, add test sections/rows (name,
-  H/L/normal flag, value, unit, reference range, description), then
-  **Generate report PDF**. It renders into the official report layout
-  (barcode, QR code, header badges, signature, footer) and uploads via
-  the same existing `report_url` flow "Upload report" already used —
-  nothing about report delivery changes for the customer. Registration
-  numbers auto-increment starting at 1047 (change the starting value in
-  the SQL below if needed). The QR code links to `/report/:bookingId`,
-  a new customer-facing page with a "Download report" button.
-
-  Run `supabase/lab_reports.sql` once (adds `doctors`, `lab_reports`,
-  and the `doctor-signatures` storage bucket). New dependencies —
-  `jsbarcode`, `jspdf`, `qrcode` — run `npm install` before building.
-
-  **Note on visual fidelity**: hand-built to closely match the official
-  template (same structure/colors/table style/barcode+QR placement),
-  not a pixel-identical clone of the source design file, since this was
-  built without being able to preview it in a browser — worth a quick
-  visual compare against a real sample report, and flag anything that's
-  off so it can be tightened up.
-
 - **Blood-drop "glass wall" hero animation** — the home screen can now
   show falling blood-drop animation styled like the inner wall of a
   glass test tube, toggleable from the admin **Views** tab: **Off**,
