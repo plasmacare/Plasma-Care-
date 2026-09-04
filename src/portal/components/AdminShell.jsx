@@ -13,7 +13,6 @@ import PaymentsTab from '../pages/staff/PaymentsTab'
 import ViewsTab from '../pages/staff/ViewsTab'
 import StaffAccessTab from '../pages/staff/StaffAccessTab'
 import B2BRequestsTab from '../pages/staff/B2BRequestsTab'
-import CollectionsTab from '../pages/staff/CollectionsTab'
 import '../styles/admin.css'
 
 const ALL_TAB_DEFS = [
@@ -24,7 +23,6 @@ const ALL_TAB_DEFS = [
   { key: 'payments', label: 'Payments' },
   { key: 'views', label: 'Views' },
   { key: 'b2b-requests', label: 'B2B Requests' },
-  { key: 'collections', label: 'Collections' },
 ]
 
 export default function AdminShell() {
@@ -112,7 +110,6 @@ export default function AdminShell() {
           {tab === 'views' && <ViewsTab />}
           {tab === 'access' && role === 'admin' && <StaffAccessTab />}
           {tab === 'b2b-requests' && role === 'admin' && <B2BRequestsTab />}
-          {tab === 'collections' && <CollectionsTab />}
         </>
       )}
     </div>
