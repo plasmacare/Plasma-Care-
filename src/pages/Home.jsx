@@ -73,6 +73,15 @@ export default function Home() {
           <span className="service-card__cta">{t('bookNow')}</span>
         </Link>
 
+        <Link to="/b2b" className="service-card service-card--live">
+          <div className="service-card__icon">
+            <BriefcaseIcon />
+          </div>
+          <h3 className="service-card__name">{t('svc_b2b_name')}</h3>
+          <p className="service-card__desc">{t('svc_b2b_desc')}</p>
+          <span className="service-card__cta">{t('svc_b2b_learnMore')}</span>
+        </Link>
+
         <p className="home__also-label">{t('alsoAvailable')}</p>
         <div className="home__chip-row">
           {OTHER_SERVICES.map((s) => {
@@ -165,6 +174,9 @@ export default function Home() {
 /* ---------- Service / feature icons ---------- */
 function TubeIcon() {
   return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><path d="M9 2h6M10 3v12a2 2 0 004 0V3" /><path d="M9 12h6" /></svg>
+}
+function BriefcaseIcon() {
+  return <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
 }
 function ScanIcon() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-950)" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
