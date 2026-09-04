@@ -43,9 +43,7 @@ export async function updateBookingStaff(id, assignedStaff) {
 /** Fetches active collection-staff accounts (role='collector') with their current open-job count, so the admin can see who's free before assigning. */
 export async function fetchCollectorsWithLoad() {
   const [{ data: collectors, error: cErr }, { data: openJobs, error: jErr }] = await Promise.all([
-    // Anyone with the "collections" tab enabled (via Access), not a
-    // separate role — admin toggles this per staff member.
-    supabase.from('staff_profiles').select('id, full_name, email').contains('allowed_tabs', ['collections']).eq('is_active', true),
+    supabase.from('staff_profiles').select('id, full_name, email').eq('role', 'collector').eq('is_active', true),
     supabase.from('bookings').select('assigned_collector_id')
       .not('assigned_collector_id', 'is', null)
       .in('collection_status', ['assigned', 'accepted', 'en_route', 'arrived']),
