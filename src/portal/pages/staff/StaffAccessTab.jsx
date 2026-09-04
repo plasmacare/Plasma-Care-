@@ -13,6 +13,7 @@ const TAB_LABELS = {
   pages: 'Pages',
   announcements: 'Announcements',
   payments: 'Payments',
+  collections: 'Collections (home-collection dispatch)',
   views: 'Views',
 }
 
