@@ -11,9 +11,6 @@ import B2BDashboard from './pages/b2b/B2BDashboard'
 import B2BBulkAdd from './pages/b2b/B2BBulkAdd'
 import B2BHistory from './pages/b2b/B2BHistory'
 import DevPulse from './pages/dev/DevPulse'
-import CollectorShell from './pages/collector/CollectorShell'
-import CollectorJobs from './pages/collector/CollectorJobs'
-import CollectorHistory from './pages/collector/CollectorHistory'
 import './pages/portal.css'
 
 // Mounted at /portal/* from the main App.jsx, behind React.lazy — none
@@ -28,6 +25,10 @@ export default function PortalRoutes() {
         <Route path="mfa/enroll" element={<MfaEnroll />} />
         <Route path="mfa/verify" element={<MfaVerify />} />
 
+        {/* Staff, Admin, and anyone granted the "Collections" tab all
+            share this one panel — collection work is just a tab an
+            admin turns on for someone via Access, not a separate role
+            or a separate portal. */}
         <Route
           path="staff/*"
           element={
@@ -61,20 +62,6 @@ export default function PortalRoutes() {
             </PortalGate>
           }
         />
-
-        {/* Collection staff (rider) portal — own accepted/en-route/
-            arrived/collected workflow, separate from the staff panel. */}
-        <Route
-          path="collector/*"
-          element={
-            <PortalGate allow="staff" requireRole="collector">
-              <CollectorShell />
-            </PortalGate>
-          }
-        >
-          <Route index element={<CollectorJobs />} />
-          <Route path="history" element={<CollectorHistory />} />
-        </Route>
       </Routes>
     </PortalAuthProvider>
   )
