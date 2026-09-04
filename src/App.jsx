@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import PathologyBooking from './pages/PathologyBooking'
+import B2BInfo from './pages/B2BInfo'
 import LegalPage from './pages/LegalPage'
 import PaymentStatus from './pages/PaymentStatus'
 import SiteBackground from './components/SiteBackground'
@@ -27,6 +28,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/book/pathology" element={<PathologyBooking />} />
+        <Route path="/b2b" element={<B2BInfo />} />
         <Route path="/pages/:slug" element={<LegalPage />} />
         <Route path="/pay/:bookingId" element={<PaymentStatus />} />
         <Route
