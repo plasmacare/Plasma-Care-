@@ -5,6 +5,7 @@ import PathologyBooking from './pages/PathologyBooking'
 import B2BInfo from './pages/B2BInfo'
 import LegalPage from './pages/LegalPage'
 import PaymentStatus from './pages/PaymentStatus'
+import ReportView from './pages/ReportView'
 import SiteBackground from './components/SiteBackground'
 import Analytics from './components/Analytics'
 
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/b2b" element={<B2BInfo />} />
         <Route path="/pages/:slug" element={<LegalPage />} />
         <Route path="/pay/:bookingId" element={<PaymentStatus />} />
+        <Route path="/report/:bookingId" element={<ReportView />} />
         <Route
           path="/portal/*"
           element={
