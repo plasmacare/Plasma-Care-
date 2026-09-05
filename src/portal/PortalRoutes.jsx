@@ -3,6 +3,7 @@ import { PortalAuthProvider } from './lib/portalAuth.jsx'
 import PortalGate from './components/PortalGate'
 import Login from './pages/Login'
 import RequestAccess from './pages/RequestAccess'
+import AcceptInvite from './pages/AcceptInvite'
 import MfaEnroll from './pages/MfaEnroll'
 import MfaVerify from './pages/MfaVerify'
 import AdminShell from './components/AdminShell'
@@ -22,6 +23,7 @@ export default function PortalRoutes() {
       <Routes>
         <Route path="login" element={<Login />} />
         <Route path="request-access" element={<RequestAccess />} />
+        <Route path="accept-invite" element={<AcceptInvite />} />
         <Route path="mfa/enroll" element={<MfaEnroll />} />
         <Route path="mfa/verify" element={<MfaVerify />} />
 
