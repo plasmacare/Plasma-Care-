@@ -1,8 +1,7 @@
 import { Suspense, lazy } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import PathologyBooking from './pages/PathologyBooking'
-import B2BInfo from './pages/B2BInfo'
 import LegalPage from './pages/LegalPage'
 import PaymentStatus from './pages/PaymentStatus'
 import ReportView from './pages/ReportView'
@@ -29,7 +28,6 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/book/pathology" element={<PathologyBooking />} />
-        <Route path="/b2b" element={<B2BInfo />} />
         <Route path="/pages/:slug" element={<LegalPage />} />
         <Route path="/pay/:bookingId" element={<PaymentStatus />} />
         <Route path="/report/:bookingId" element={<ReportView />} />
@@ -41,6 +39,10 @@ export default function App() {
             </Suspense>
           }
         />
+        {/* Safety net: any unmatched route (a stale link, a typo, a
+            leftover hash fragment main.jsx didn't recognize) redirects
+            home instead of silently rendering a blank page. */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   )

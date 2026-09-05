@@ -30,16 +30,25 @@ if (missingEnv) {
     </div>,
   )
 } else {
-  // Supabase invite/recovery links land here as
-  // "#access_token=...&refresh_token=...&type=invite" — a hash that
-  // looks nothing like our own routes (which always start "#/"). If we
-  // let HashRouter see this first, it tries to route to a page called
-  // "access_token=..." and the tokens are never picked up. So: catch it
-  // here, establish the session manually, rewrite the URL to a clean
-  // route, THEN mount the router.
-  async function consumeAuthHashIfPresent() {
+  // Supabase invite/recovery links land here as either:
+  //   "#access_token=...&refresh_token=...&type=invite"   (success)
+  //   "#error=access_denied&error_code=otp_expired&..."     (expired/already-used link)
+  // Both look nothing like our own routes (which always start "#/"). If
+  // we let HashRouter see either one first, it tries to route to a page
+  // called "access_token=..." or "error=...", finds nothing, and every
+  // route in this app renders blank on a miss — so the person just sees
+  // a blank white screen with no idea why. Catch both cases here,
+  // before the router ever mounts.
+  async function consumeAuthHash() {
     const hash = window.location.hash
-    if (!hash.startsWith('#access_token=')) return
+
+    if (hash.startsWith('#error=')) {
+      const params = new URLSearchParams(hash.slice(1))
+      return { status: 'link_error', description: params.get('error_description')?.replace(/\+/g, ' ') }
+    }
+
+    if (!hash.startsWith('#access_token=')) return { status: 'none' }
+
     const params = new URLSearchParams(hash.slice(1))
     const access_token = params.get('access_token')
     const refresh_token = params.get('refresh_token')
@@ -50,9 +59,24 @@ if (missingEnv) {
       const dest = type === 'invite' || type === 'recovery' ? '#/portal/accept-invite' : '#/'
       window.history.replaceState(null, '', window.location.pathname + window.location.search + dest)
     }
+    return { status: 'ok' }
   }
 
-  consumeAuthHashIfPresent().finally(() => {
+  consumeAuthHash().then((result) => {
+    if (result.status === 'link_error') {
+      root.render(
+        <div style={{ maxWidth: 480, margin: '48px auto', padding: '0 20px', fontFamily: 'system-ui, sans-serif', color: '#5C6B7A', textAlign: 'center' }}>
+          <h1 style={{ color: '#0B2545', fontSize: 20 }}>This link has expired</h1>
+          <p style={{ lineHeight: 1.5 }}>
+            {result.description || 'This invite or reset link is no longer valid.'} Links like this are
+            single-use and time-limited — ask an admin to resend it, then open the new one directly
+            (not through an email app's "safe link" preview, which can use up the link before you click it).
+          </p>
+          <a href={window.location.pathname} style={{ color: '#B31F1F', fontWeight: 600 }}>Go to homepage</a>
+        </div>,
+      )
+      return
+    }
     import('./AppRoot').then(({ default: AppRoot }) => {
       root.render(<AppRoot />)
     })
