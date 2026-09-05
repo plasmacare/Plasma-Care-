@@ -18,8 +18,13 @@ export function PortalAuthProvider({ children }) {
   const [mfaState, setMfaState] = useState('checking')
   // 'checking' | 'not_required' | 'needs_enroll' | 'needs_challenge' | 'satisfied'
 
-  const accountType = staffProfile ? 'staff' : (b2bAccount ? 'b2b' : null)
-  const role = staffProfile?.role ?? (b2bAccount ? 'b2b' : null)
+  // b2b_accounts takes priority on purpose: the only way that row
+  // exists is a deliberate admin approval, whereas a staff_profiles row
+  // can appear for any new login via the auto-provisioning trigger
+  // (including B2B ones) — this stops a B2B account being mistaken for
+  // staff even if a stray staff_profiles row slips through.
+  const accountType = b2bAccount ? 'b2b' : (staffProfile ? 'staff' : null)
+  const role = b2bAccount ? 'b2b' : (staffProfile?.role ?? null)
 
   async function loadAccounts(userId) {
     const [{ data: sp }, { data: b2b }] = await Promise.all([
