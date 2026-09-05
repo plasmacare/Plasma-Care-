@@ -20,7 +20,7 @@ export default function B2BRequestsTab() {
     load()
   }, [])
 
-  async function approve(row) {
+  async function invite(row, { isResend } = {}) {
     setBusyId(row.id)
     setError('')
     try {
@@ -37,8 +37,13 @@ export default function B2BRequestsTab() {
         },
       )
       const body = await res.json()
-      if (!res.ok) throw new Error(body.error || 'Approval failed')
-      logEvent({ type: 'b2b_request_approved', source: 'admin', message: `Approved B2B request: ${row.company_name}`, metadata: { request_id: row.id } })
+      if (!res.ok) throw new Error(body.error || 'Failed to send invite')
+      logEvent({
+        type: isResend ? 'b2b_invite_resent' : 'b2b_request_approved',
+        source: 'admin',
+        message: `${isResend ? 'Resent invite to' : 'Approved'} B2B request: ${row.company_name}`,
+        metadata: { request_id: row.id },
+      })
       await load()
     } catch (err) {
       setError(err.message)
@@ -98,7 +103,7 @@ export default function B2BRequestsTab() {
               <td>{row.gstin || '—'}</td>
               <td style={{ maxWidth: 200 }}>{row.message || '—'}</td>
               <td style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn--primary" disabled={busyId === row.id} onClick={() => approve(row)}>
+                <button className="btn btn--primary" disabled={busyId === row.id} onClick={() => invite(row)}>
                   {busyId === row.id ? '…' : 'Approve'}
                 </button>
                 <button className="btn btn--ghost" disabled={busyId === row.id} onClick={() => reject(row)}>
@@ -119,6 +124,7 @@ export default function B2BRequestsTab() {
                 <th>Company</th>
                 <th>Email</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -127,6 +133,13 @@ export default function B2BRequestsTab() {
                   <td>{row.company_name}</td>
                   <td>{row.email}</td>
                   <td style={{ textTransform: 'capitalize' }}>{row.status}</td>
+                  <td>
+                    {row.status === 'approved' && (
+                      <button className="btn btn--ghost" disabled={busyId === row.id} onClick={() => invite(row, { isResend: true })}>
+                        {busyId === row.id ? '…' : 'Resend invite'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
