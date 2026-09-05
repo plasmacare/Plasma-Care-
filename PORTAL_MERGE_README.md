@@ -273,3 +273,58 @@ affected (created before this fix): in Supabase Table Editor, open
 `b2b_accounts` are untouched by this. After deleting, they'll only show
 up in the Access tab if a *new* stray row is ever created (which, with
 this fix, it shouldn't be).
+
+## Update — B2B bulk-add rework, admin visibility, per-patient tests
+
+1. **No more line-by-line typing.** Bulk Add is now box-based: fill
+   Name/Age/Gender/Phone and the patient is added to the list
+   automatically the moment all four are filled — no separate "Add"
+   click, no textarea. There's also a CSV upload (export your Excel
+   sheet as CSV first) for adding many at once: columns are
+   `Name, Age, Gender, Phone, Test/Package name` (the last column is
+   optional — matched by name against your catalog; leave it blank and
+   pick it per-row afterward).
+
+2. **Test/Package is now per-patient**, not one selection for the whole
+   batch — each row in the list gets its own dropdown, since different
+   employees in one company often need different checkups. The old
+   single "select a package" step at the top is gone.
+
+3. History now shows full detail per submission — tap any past batch to
+   expand the complete patient list with each person's assigned
+   test/package, not just a summary count.
+
+4. **New: admin can finally see these orders.** B2B Requests tab now
+   has two sections — **Access Requests** (the company approval flow,
+   as before) and a new **Bulk Orders** tab showing every company's
+   submitted batches, expandable to the full patient list, with a
+   status dropdown (submitted → processing → completed/cancelled) so
+   staff can track fulfillment. This was a genuine gap before — there
+   was no admin-side view for these at all, which is why nothing showed
+   up.
+
+5. No SQL changes needed for any of the above — `patients` is a
+   flexible jsonb column, so it stores the extra per-patient fields
+   without a migration.
+
+## Supabase "RAM 57%" — what it actually is
+
+This isn't cache junk like a phone app accumulates — it's the live
+memory usage of your project's actual database server, which is a
+small shared instance on the free tier. It moves up and down with
+real activity: open admin sessions, realtime subscriptions (live
+booking notifications, Dev Pulse's live log feed, new-collection-job
+alerts), and query load all use it while active, and there's no
+"cache files" sitting there to safely delete the way there is on a
+phone.
+
+What *does* only grow and never shrink on its own: two logging tables
+— `activity_logs` (every uncaught error, site-wide, logged
+automatically) and `page_views`. These affect disk/storage more than
+RAM, but pruning old rows from them is genuinely safe and doesn't touch
+anything business-critical. Added `supabase/maintenance_prune_logs.sql`
+for this — run it whenever you like, no schedule required. If 57%
+specifically refers to Database RAM (check Dashboard → Database →
+Reports to see which metric), pruning these won't move that number much
+by itself — that one mostly reflects concurrent connections/activity
+rather than accumulated storage.
