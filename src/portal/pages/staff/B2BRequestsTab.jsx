@@ -24,20 +24,35 @@ export default function B2BRequestsTab() {
     setBusyId(row.id)
     setError('')
     try {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/approve-b2b-request`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${sessionData.session.access_token}`,
+      if (isResend) {
+        // The account already exists (created on first Approve) but may
+        // never have had a password set — inviteUserByEmail refuses a
+        // second time ("already registered"), so a resend uses the
+        // password-recovery flow instead, which works on any existing
+        // account regardless of whether they ever completed setup.
+        // This sends the email directly (no edge function needed) and
+        // lands them on the same "set your password" page as before.
+        const siteUrl = window.location.origin + import.meta.env.BASE_URL
+        const { error: resendErr } = await supabase.auth.resetPasswordForEmail(row.email, {
+          redirectTo: siteUrl,
+        })
+        if (resendErr) throw resendErr
+      } else {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/approve-b2b-request`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+            body: JSON.stringify({ request_id: row.id }),
           },
-          body: JSON.stringify({ request_id: row.id }),
-        },
-      )
-      const body = await res.json()
-      if (!res.ok) throw new Error(body.error || 'Failed to send invite')
+        )
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error || 'Failed to send invite')
+      }
       logEvent({
         type: isResend ? 'b2b_invite_resent' : 'b2b_request_approved',
         source: 'admin',
