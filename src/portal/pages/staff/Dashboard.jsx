@@ -7,6 +7,7 @@ import {
 } from '../../lib/adminData'
 import { exportBookingsCsv } from '../../lib/csvExport'
 import MapPreview from '../../components/MapPreview'
+import ReportBuilder from '../../components/ReportBuilder'
 import {
   fetchPaymentSettings, createRazorpayLink, savePaymentRequest, markPaymentReceived, computeRequiredAmount,
 } from '../../lib/payments'
@@ -475,6 +476,8 @@ function BookingCard({
             onReset={onReportReset}
           />
 
+          <ReportBuilderToggle booking={booking} onGenerated={(url) => onBookingPatch({ report_url: url, report_status: 'uploaded' })} />
+
           <label className="booking-card__notes">
             Admin notes
             <textarea
@@ -695,6 +698,26 @@ function DetailRow({ label, value }) {
     <div className="detail-row">
       <span className="detail-row__label">{label}</span>
       <span className="detail-row__value">{value}</span>
+    </div>
+  )
+}
+
+function ReportBuilderToggle({ booking, onGenerated }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="report-builder-toggle">
+      <button type="button" className="btn btn--ghost" onClick={() => setOpen((o) => !o)}>
+        {open ? 'Hide report builder' : booking.report_url ? 'Regenerate report' : 'Generate report'}
+      </button>
+      {open && (
+        <ReportBuilder
+          booking={booking}
+          onGenerated={(url) => {
+            onGenerated(url)
+            setOpen(false)
+          }}
+        />
+      )}
     </div>
   )
 }
