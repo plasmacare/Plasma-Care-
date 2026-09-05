@@ -63,13 +63,9 @@ Deno.serve(async (req) => {
       .single()
 
     if (reqErr || !reqRow) return json({ error: 'Request not found' }, 404)
-    if (reqRow.status === 'rejected') {
-      return json({ error: 'This request was rejected — approve a fresh request instead.' }, 400)
+    if (reqRow.status !== 'pending') {
+      return json({ error: `Request already ${reqRow.status} — use Resend invite instead` }, 400)
     }
-    // status is 'pending' (first approval) or 'approved' (resend) —
-    // both fall through to the same invite call below. Supabase resends
-    // a fresh invite token for an email that's still unconfirmed rather
-    // than erroring, so this doubles as "Resend invite".
 
     // Creates the login AND emails them a "set your password" link.
     // redirectTo points at the site's plain root (no #route) — Supabase
@@ -86,10 +82,7 @@ Deno.serve(async (req) => {
 
     const newUserId = invited.user.id
 
-    // Upsert, not insert — a resend targets the same auth user (Supabase
-    // keeps the same id for an unconfirmed invitee), so this would
-    // otherwise fail on the primary key the second time around.
-    const { error: acctErr } = await adminClient.from('b2b_accounts').upsert({
+    const { error: acctErr } = await adminClient.from('b2b_accounts').insert({
       id: newUserId,
       request_id: reqRow.id,
       email: reqRow.email,
@@ -101,12 +94,10 @@ Deno.serve(async (req) => {
     })
     if (acctErr) return json({ error: acctErr.message }, 500)
 
-    if (reqRow.status !== 'approved') {
-      await adminClient
-        .from('b2b_requests')
-        .update({ status: 'approved', reviewed_by: caller.id, reviewed_at: new Date().toISOString() })
-        .eq('id', request_id)
-    }
+    await adminClient
+      .from('b2b_requests')
+      .update({ status: 'approved', reviewed_by: caller.id, reviewed_at: new Date().toISOString() })
+      .eq('id', request_id)
 
     return json({ ok: true, user_id: newUserId })
   } catch (err) {
