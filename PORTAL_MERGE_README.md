@@ -187,3 +187,52 @@ natural next step rather than building a half-working version now.
    database check constraint. It now only updates `collection_status`;
    the booking's main status is still changed manually from the
    Bookings tab's own dropdown, same as before.
+
+## Update — 2FA stuck-loading fix, B2B homepage box removed, invite-link reliability
+
+1. **2FA "Loading QR code" stuck forever** — this was a real bug: if
+   `mfa.enroll()` failed for any reason, the error was captured but
+   never shown on screen (only the loading text stayed). Now:
+   - The error message displays properly, with a **Retry** link
+   - Before every enroll attempt, any leftover *unverified* factor from
+     a previous abandoned attempt is cleaned up automatically — this is
+     the most common reason a second enroll silently fails
+   - If your 2nd admin is still stuck after this update, the Retry link
+     will now actually show you the real error text — send me that.
+
+2. **B2B homepage card removed** — the "Corporate / B2B Health
+   Checkups" box and its description page are gone from the customer
+   site, since your B2B naming is reserved for stores/franchise centers.
+   The underlying B2B partner portal itself (Request Access → Admin
+   approves → dashboard) is untouched and still reachable directly —
+   just not promoted on the homepage anymore.
+
+3. **B2B invite links — root cause + fix**:
+   - The `localhost:3000` link you saw was from an old invite email
+     sent *before* Site URL was configured in Supabase (it was still on
+     the factory default). That specific email's link is dead — no fix
+     makes an old email retroactively correct.
+   - The blank white page on retry was a second, real bug: Supabase
+     marks invite/reset links as **single-use**, and they also expire.
+     If a link is reused or already expired, Supabase redirects with
+     `#error=...` instead of a session — and since nothing in the app
+     recognized that pattern, it silently rendered nothing. Fixed: that
+     case now shows a clear "This link has expired" message with a
+     plain-English reason, instead of a blank screen.
+   - Added a general safety net too: any unrecognized URL in the app
+     now redirects home instead of ever rendering blank.
+   - **New: Resend invite button** — on the B2B Requests tab, approved
+     companies now have a "Resend invite" button (next to their status)
+     for exactly this situation, instead of needing a brand new request.
+   - **Double-check Site URL has the trailing slash**: it should be
+     `https://plasmacare.github.io/Plasma-Care-/` (matching the site's
+     actual base path) in both **Site URL** and **Redirect URLs** —
+     without the trailing slash, GitHub Pages 301-redirects to add it,
+     which usually still works but is one less thing to go wrong.
+   - **One real-world gotcha to know about**: some email apps (Gmail's
+     link-scanning, corporate security scanners, WhatsApp previews if
+     forwarded) can "click" a link automatically before the actual
+     person does, burning a single-use invite token before they ever
+     see it. If a specific person's invite keeps dying immediately, use
+     **Resend invite** and have them open it directly rather than
+     through a forwarded/previewed copy.
