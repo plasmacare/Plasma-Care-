@@ -94,6 +94,12 @@ Deno.serve(async (req) => {
     })
     if (acctErr) return json({ error: acctErr.message }, 500)
 
+    // The auto-provisioning trigger on auth.users creates a
+    // staff_profiles row for every new login, staff or not — clean up
+    // the stray one here so this account is only ever a B2B account,
+    // never mistaken for staff.
+    await adminClient.from('staff_profiles').delete().eq('id', newUserId)
+
     await adminClient
       .from('b2b_requests')
       .update({ status: 'approved', reviewed_by: caller.id, reviewed_at: new Date().toISOString() })
