@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { usePortalAuth } from '../lib/portalAuth.jsx'
@@ -9,15 +9,37 @@ export default function MfaEnroll() {
   const [enrollment, setEnrollment] = useState(null) // { factorId, qrCode, secret }
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
+  const [starting, setStarting] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+
+  const startEnroll = useCallback(async () => {
+    setStarting(true)
+    setError('')
+    setEnrollment(null)
+    try {
+      // A leftover unverified factor from a previous abandoned attempt
+      // blocks a fresh enroll — clean it up first so this never gets
+      // permanently stuck on a second/retry attempt.
+      const { data: factors } = await supabase.auth.mfa.listFactors()
+      const stale = factors?.totp?.find((f) => f.status === 'unverified')
+      if (stale) {
+        await supabase.auth.mfa.unenroll({ factorId: stale.id })
+      }
+
+      const { data, error: enrollErr } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
+      if (enrollErr) throw enrollErr
+      setEnrollment({ factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret })
+    } catch (err) {
+      setError(err.message || 'Could not start 2FA setup.')
+    } finally {
+      setStarting(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (mfaState !== 'needs_enroll') return
-    supabase.auth.mfa.enroll({ factorType: 'totp' }).then(({ data, error }) => {
-      if (error) setError(error.message)
-      else setEnrollment({ factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret })
-    })
-  }, [mfaState])
+    startEnroll()
+  }, [mfaState, startEnroll])
 
   if (!loading && role !== 'admin' && role !== 'developer') return <Navigate to="/portal/login" replace />
   if (!loading && mfaState === 'satisfied') return <Navigate to={role === 'developer' ? '/portal/dev' : '/portal/staff'} replace />
@@ -53,9 +75,16 @@ export default function MfaEnroll() {
           A one-time Authenticator app setup (Google Authenticator, Authy, etc.) is required for this account.
         </p>
 
-        {!enrollment ? (
+        {error && (
+          <p className="login-error">
+            {error}{' '}
+            <a href="#" onClick={(e) => { e.preventDefault(); startEnroll() }}>Retry</a>
+          </p>
+        )}
+
+        {starting && !error ? (
           <p>Loading QR code…</p>
-        ) : (
+        ) : enrollment ? (
           <>
             <div className="portal-mfa-qr" dangerouslySetInnerHTML={{ __html: enrollment.qrCode }} />
             <p className="portal-form__hint">Can't scan the QR? Enter this code manually:</p>
@@ -78,7 +107,7 @@ export default function MfaEnroll() {
               </button>
             </form>
           </>
-        )}
+        ) : null}
 
         <p className="portal-card__footer">
           Wrong account? <a href="#" onClick={(e) => { e.preventDefault(); logout() }}>Sign out</a>
