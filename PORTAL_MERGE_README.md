@@ -236,3 +236,16 @@ natural next step rather than building a half-working version now.
      see it. If a specific person's invite keeps dying immediately, use
      **Resend invite** and have them open it directly rather than
      through a forwarded/previewed copy.
+
+## Update — Resend invite fixed properly
+
+The previous "Resend invite" attempt reused `inviteUserByEmail`, which
+Supabase refuses for an email that's already registered — that's the
+"already been registered" error you hit. The account existing (with no
+password set yet) is exactly the case Supabase's **password recovery**
+flow is for, not invite. Resend now calls `resetPasswordForEmail`
+directly from the browser (no edge function involved for resends
+anymore) — it works on any existing account regardless of whether they
+ever finished setup, and lands them on the same "set your password"
+page as before. No Supabase config changes needed for this one — just
+redeploy the updated code.
