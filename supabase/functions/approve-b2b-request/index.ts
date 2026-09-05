@@ -63,19 +63,33 @@ Deno.serve(async (req) => {
       .single()
 
     if (reqErr || !reqRow) return json({ error: 'Request not found' }, 404)
-    if (reqRow.status !== 'pending') {
-      return json({ error: `Request already ${reqRow.status}` }, 400)
+    if (reqRow.status === 'rejected') {
+      return json({ error: 'This request was rejected — approve a fresh request instead.' }, 400)
     }
+    // status is 'pending' (first approval) or 'approved' (resend) —
+    // both fall through to the same invite call below. Supabase resends
+    // a fresh invite token for an email that's still unconfirmed rather
+    // than erroring, so this doubles as "Resend invite".
 
     // Creates the login AND emails them a "set your password" link.
+    // redirectTo points at the site's plain root (no #route) — Supabase
+    // appends the session as a #access_token=... hash fragment onto
+    // exactly this URL. main.jsx catches that pattern before the
+    // HashRouter mounts and turns it into a clean /portal/accept-invite
+    // navigation, so the tokens never collide with app routing.
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://plasmacare.github.io/Plasma-Care-/'
     const { data: invited, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(
       reqRow.email,
+      { redirectTo: siteUrl },
     )
     if (inviteErr) return json({ error: inviteErr.message }, 500)
 
     const newUserId = invited.user.id
 
-    const { error: acctErr } = await adminClient.from('b2b_accounts').insert({
+    // Upsert, not insert — a resend targets the same auth user (Supabase
+    // keeps the same id for an unconfirmed invitee), so this would
+    // otherwise fail on the primary key the second time around.
+    const { error: acctErr } = await adminClient.from('b2b_accounts').upsert({
       id: newUserId,
       request_id: reqRow.id,
       email: reqRow.email,
@@ -87,10 +101,12 @@ Deno.serve(async (req) => {
     })
     if (acctErr) return json({ error: acctErr.message }, 500)
 
-    await adminClient
-      .from('b2b_requests')
-      .update({ status: 'approved', reviewed_by: caller.id, reviewed_at: new Date().toISOString() })
-      .eq('id', request_id)
+    if (reqRow.status !== 'approved') {
+      await adminClient
+        .from('b2b_requests')
+        .update({ status: 'approved', reviewed_by: caller.id, reviewed_at: new Date().toISOString() })
+        .eq('id', request_id)
+    }
 
     return json({ ok: true, user_id: newUserId })
   } catch (err) {
