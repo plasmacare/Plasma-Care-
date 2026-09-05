@@ -30,7 +30,31 @@ if (missingEnv) {
     </div>,
   )
 } else {
-  import('./AppRoot').then(({ default: AppRoot }) => {
-    root.render(<AppRoot />)
+  // Supabase invite/recovery links land here as
+  // "#access_token=...&refresh_token=...&type=invite" — a hash that
+  // looks nothing like our own routes (which always start "#/"). If we
+  // let HashRouter see this first, it tries to route to a page called
+  // "access_token=..." and the tokens are never picked up. So: catch it
+  // here, establish the session manually, rewrite the URL to a clean
+  // route, THEN mount the router.
+  async function consumeAuthHashIfPresent() {
+    const hash = window.location.hash
+    if (!hash.startsWith('#access_token=')) return
+    const params = new URLSearchParams(hash.slice(1))
+    const access_token = params.get('access_token')
+    const refresh_token = params.get('refresh_token')
+    const type = params.get('type')
+    if (access_token && refresh_token) {
+      const { supabase } = await import('./lib/supabase')
+      await supabase.auth.setSession({ access_token, refresh_token })
+      const dest = type === 'invite' || type === 'recovery' ? '#/portal/accept-invite' : '#/'
+      window.history.replaceState(null, '', window.location.pathname + window.location.search + dest)
+    }
+  }
+
+  consumeAuthHashIfPresent().finally(() => {
+    import('./AppRoot').then(({ default: AppRoot }) => {
+      root.render(<AppRoot />)
+    })
   })
 }
