@@ -249,3 +249,27 @@ anymore) — it works on any existing account regardless of whether they
 ever finished setup, and lands them on the same "set your password"
 page as before. No Supabase config changes needed for this one — just
 redeploy the updated code.
+
+## Update — B2B accounts were being mistaken for staff
+
+Root cause: the auto-provisioning trigger creates a `staff_profiles`
+row for *every* new Supabase Auth login, including B2B ones — it can't
+tell the difference at the moment it fires. So a B2B account ended up
+with both a `b2b_accounts` row (correct) and a stray `staff_profiles`
+row (wrong), and the app was checking staff_profiles first, sending
+B2B users to the Staff panel instead.
+
+Fixed two ways:
+1. The edge function now deletes that stray staff_profiles row right
+   after creating the B2B account, so this can't happen again going
+   forward.
+2. `portalAuth.jsx` also now checks `b2b_accounts` first regardless —
+   belt and suspenders, in case a stray row ever slips through again.
+
+**One-time manual cleanup needed** for the two accounts already
+affected (created before this fix): in Supabase Table Editor, open
+`staff_profiles` and delete the rows for `atifk993366@gmail.com` and
+`trial@testing.com` — they don't belong there. Their real accounts in
+`b2b_accounts` are untouched by this. After deleting, they'll only show
+up in the Access tab if a *new* stray row is ever created (which, with
+this fix, it shouldn't be).
