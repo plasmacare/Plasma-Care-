@@ -4,6 +4,7 @@ import { fetchPackages, fetchTests } from '../../lib/catalogData'
 import { submitBulkRequest } from '../../lib/b2bData'
 import { logEvent } from '../../../lib/telemetry'
 import { usePortalAuth } from '../../lib/portalAuth.jsx'
+import TestPackageSearchSelect from '../../components/TestPackageSearchSelect'
 
 const GENDERS = ['Male', 'Female', 'Other']
 
@@ -44,18 +45,27 @@ export default function B2BBulkAdd() {
     return options.find((o) => o.label.toLowerCase().startsWith(needle)) || null
   }
 
-  // Auto-add: the moment all four fields are filled, the row commits to
-  // the list on its own and the boxes clear for the next person — no
-  // separate "Add" click needed.
+  // Auto-add: fires once name/age/gender are filled AND phone is either
+  // left empty (phone is optional) or a full, valid number — never on a
+  // partial phone number mid-typing. Also offer an explicit button below
+  // for anyone who prefers not to rely on the auto-trigger.
   useEffect(() => {
     const { name, age, gender, phone } = draft
-    if (name.trim() && age.trim() && gender && phone.trim().length >= 7) {
-      setPatients((prev) => [...prev, { id: crypto.randomUUID(), name: name.trim(), age: age.trim(), gender, phone: phone.trim(), optionKey: '' }])
-      setDraft({ name: '', age: '', gender: '', phone: '' })
-      nameInputRef.current?.focus()
+    const phoneDigits = phone.trim().replace(/\D/g, '')
+    const phoneOkOrEmpty = phoneDigits.length === 0 || phoneDigits.length === 10
+    if (name.trim() && age.trim() && gender && phoneOkOrEmpty && phoneDigits.length === 10) {
+      commitDraft()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft])
+
+  function commitDraft() {
+    const { name, age, gender, phone } = draft
+    if (!name.trim() || !age.trim() || !gender) return
+    setPatients((prev) => [...prev, { id: crypto.randomUUID(), name: name.trim(), age: age.trim(), gender, phone: phone.trim(), optionKey: '' }])
+    setDraft({ name: '', age: '', gender: '', phone: '' })
+    nameInputRef.current?.focus()
+  }
 
   function removePatient(id) {
     setPatients((prev) => prev.filter((p) => p.id !== id))
@@ -169,12 +179,21 @@ export default function B2BBulkAdd() {
             {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
           <input
-            placeholder="Phone"
+            placeholder="Phone (optional)"
             inputMode="tel"
             value={draft.phone}
             onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
           />
         </div>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          style={{ marginTop: 8 }}
+          disabled={!draft.name.trim() || !draft.age.trim() || !draft.gender}
+          onClick={commitDraft}
+        >
+          + Add patient
+        </button>
 
         <div className="b2b-add-box__upload">
           <span>or upload a list:</span>
@@ -206,10 +225,13 @@ export default function B2BBulkAdd() {
                   <td>{p.gender}</td>
                   <td>{p.phone}</td>
                   <td>
-                    <select value={p.optionKey} onChange={(e) => setPatientOption(p.id, e.target.value)}>
-                      <option value="">— Select —</option>
-                      {options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                    </select>
+                    <TestPackageSearchSelect
+                      tests={tests}
+                      packages={packages}
+                      value={options.find((o) => o.key === p.optionKey)?.label.replace(/ — ₹.*/, '') || ''}
+                      onSelect={(opt) => setPatientOption(p.id, opt.key)}
+                      placeholder="Search test/package…"
+                    />
                   </td>
                   <td>
                     <button type="button" className="btn btn--ghost" onClick={() => removePatient(p.id)}>Remove</button>
