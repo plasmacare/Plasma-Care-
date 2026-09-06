@@ -66,6 +66,31 @@ depend on it.
 
 ## What's new in this update
 
+- **B2B bulk-add: phone is now genuinely optional** — filling
+  name/age/gender no longer auto-commits a row the moment the phone
+  field reaches 6-7 digits (that was an unintended premature trigger).
+  It now auto-adds only once the phone is a full 10 digits, or is left
+  empty; there's also an explicit **+ Add patient** button for anyone
+  who'd rather not rely on the auto-trigger at all.
+- **Fixed page content spilling past the margins** on the Access
+  (Staff Access) and B2B Requests (Access Requests) pages — their
+  tables had no horizontal-scroll container, so on a narrow phone the
+  whole page was forced wider than the viewport. They now scroll
+  within their own box instead of pushing the page around.
+- **Bulk orders become real bookings** — B2B Requests → Bulk Orders now
+  has an **Accept & create bookings** button. Once clicked, every
+  patient in that order becomes a normal row in the Bookings tab —
+  same status workflow, same collection assignment, and (since it's
+  now a real booking) the same **Generate report** button from the lab
+  report feature works for B2B patients too, with no separate B2B
+  report feature needed. Run `supabase/b2b_bulk_to_bookings.sql` once.
+- **Searchable test/package pickers** — B2B Bulk Add's per-patient
+  test/package field and the report builder's test-name field are now
+  search-as-you-type pickers over the actual catalog instead of a long
+  dropdown or free text, so results only came from what's really
+  offered. (The customer booking flow already had this.)
+
+
 - **Generate branded lab report PDFs** — from a booking's detail in the
   staff/admin Bookings tab, tap **Generate report**: pick (or add) a
   doctor with a pre-saved signature, add test sections/rows (name,
