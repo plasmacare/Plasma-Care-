@@ -56,5 +56,5 @@
 .job-card__actions { display: flex; gap: 8px; margin-top: 4px; }
 .job-card__actions a { text-decoration: none; text-align: center; flex: 1; }
 
-.job-card__primary-actions { display: flex; gap: 8px; margin-top: 6px; }
-.job-card__primary-actions button { flex: 1; }
+.job-card__primary-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.job-card__primary-actions button { flex: 1; min-width: 140px; }

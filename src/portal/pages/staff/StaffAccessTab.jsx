@@ -73,6 +73,7 @@ export default function StaffAccessTab() {
       </p>
       {error && <p className="login-error">{error}</p>}
 
+      <div className="admin-table-wrap">
       <table className="admin-table">
         <thead>
           <tr>
@@ -141,6 +142,7 @@ export default function StaffAccessTab() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

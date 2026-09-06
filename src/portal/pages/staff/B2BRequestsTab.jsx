@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { logEvent } from '../../../lib/telemetry'
-import { fetchAllBulkRequests, updateBulkRequestStatus } from '../../lib/b2bData'
+import { fetchAllBulkRequests, updateBulkRequestStatus, convertBulkRequestToBookings } from '../../lib/b2bData'
 import './collectionsTab.css'
 
 const BULK_STATUSES = ['submitted', 'processing', 'completed', 'cancelled']
@@ -111,6 +111,7 @@ function AccessRequestsPanel() {
 
       <h3 style={{ marginBottom: 12 }}>Pending ({pending.length})</h3>
       {pending.length === 0 && <p style={{ color: '#666' }}>No pending requests.</p>}
+      <div className="admin-table-wrap">
       <table className="admin-table">
         <thead>
           <tr>
@@ -144,10 +145,12 @@ function AccessRequestsPanel() {
           ))}
         </tbody>
       </table>
+      </div>
 
       {resolved.length > 0 && (
         <>
           <h3 style={{ margin: '24px 0 12px' }}>Past requests</h3>
+          <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
               <tr>
@@ -174,6 +177,7 @@ function AccessRequestsPanel() {
               ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
     </div>
@@ -185,6 +189,7 @@ function BulkOrdersPanel() {
   const [error, setError] = useState('')
   const [expandedId, setExpandedId] = useState(null)
   const [savingId, setSavingId] = useState(null)
+  const [convertingId, setConvertingId] = useState(null)
 
   async function load() {
     try {
@@ -208,6 +213,25 @@ function BulkOrdersPanel() {
       setError(err.message)
     } finally {
       setSavingId(null)
+    }
+  }
+
+  async function handleConvert(order) {
+    setConvertingId(order.id)
+    setError('')
+    try {
+      const ids = await convertBulkRequestToBookings(order)
+      logEvent({
+        type: 'b2b_bulk_request_converted',
+        source: 'admin',
+        message: `Converted bulk order to ${ids.length} booking(s): ${order.b2b_accounts?.company_name || ''}`,
+        metadata: { bulk_request_id: order.id, booking_ids: ids },
+      })
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setConvertingId(null)
     }
   }
 
@@ -252,7 +276,7 @@ function BulkOrdersPanel() {
                         <tbody>
                           {(order.patients || []).map((p, i) => (
                             <tr key={i}>
-                              <td>{p.name}</td><td>{p.age}</td><td>{p.gender}</td><td>{p.phone}</td><td>{p.test_label || '—'}</td>
+                              <td>{p.name}</td><td>{p.age}</td><td>{p.gender}</td><td>{p.phone || '—'}</td><td>{p.test_label || '—'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -262,6 +286,18 @@ function BulkOrdersPanel() {
                 )}
 
                 <div className="job-card__primary-actions">
+                  {order.bookings_created ? (
+                    <span className="portal-form__hint">✓ Bookings created — manage them from the Bookings tab.</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      disabled={convertingId === order.id}
+                      onClick={() => handleConvert(order)}
+                    >
+                      {convertingId === order.id ? 'Creating…' : `Accept & create ${order.patients?.length || 0} booking(s)`}
+                    </button>
+                  )}
                   <select
                     value={order.status}
                     disabled={savingId === order.id}
