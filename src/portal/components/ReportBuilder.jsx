@@ -3,7 +3,9 @@ import {
   fetchDoctors, addDoctor, ensureLabReport, saveLabReportDraft,
   buildReportQrUrl, generateQrDataUrl, renderReportToPdfBlob, uploadGeneratedReport,
 } from '../lib/reportBuilder'
+import { fetchPackages, fetchTests } from '../lib/catalogData'
 import LabReportTemplate from './LabReportTemplate'
+import TestPackageSearchSelect from './TestPackageSearchSelect'
 
 const FLAGS = ['', 'H', 'L']
 
@@ -24,12 +26,16 @@ export default function ReportBuilder({ booking, onGenerated }) {
   const [newDoctorQual, setNewDoctorQual] = useState('')
   const [newDoctorSig, setNewDoctorSig] = useState(null)
   const [qrDataUrl, setQrDataUrl] = useState('')
+  const [catalogTests, setCatalogTests] = useState([])
+  const [catalogPackages, setCatalogPackages] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const templateRef = useRef(null)
 
   useEffect(() => {
     fetchDoctors().then(setDoctors).catch(() => {})
+    fetchTests().then(setCatalogTests).catch(() => {})
+    fetchPackages().then(setCatalogPackages).catch(() => {})
     ensureLabReport(booking.id).then((report) => {
       setLabReport(report)
       if (report.doctor_id) setDoctorId(report.doctor_id)
@@ -138,7 +144,14 @@ export default function ReportBuilder({ booking, onGenerated }) {
           {section.tests.map((test, ti) => (
             <div key={ti} className="report-builder__test">
               <div className="report-builder__test-row">
-                <input placeholder="Test name" value={test.name} onChange={(e) => updateTest(si, ti, { name: e.target.value })} />
+                <TestPackageSearchSelect
+                  tests={catalogTests}
+                  packages={catalogPackages}
+                  value={test.name}
+                  onChangeText={(text) => updateTest(si, ti, { name: text })}
+                  onSelect={(opt) => updateTest(si, ti, { name: opt.name })}
+                  placeholder="Search test/package…"
+                />
                 <select value={test.flag} onChange={(e) => updateTest(si, ti, { flag: e.target.value })}>
                   {FLAGS.map((f) => <option key={f} value={f}>{f || 'Normal'}</option>)}
                 </select>
