@@ -164,18 +164,19 @@
   border-radius: var(--radius-md);
   padding: 14px;
 }
-.b2b-add-box__row {
-  display: grid;
-  grid-template-columns: 1.4fr 0.7fr 1fr 1.1fr;
+.b2b-add-box__stack {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
-.b2b-add-box__row input,
-.b2b-add-box__row select {
+.b2b-add-box__stack input,
+.b2b-add-box__stack select {
+  width: 100%;
   font-family: inherit;
   font-size: 13.5px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 10px;
+  padding: 11px 10px;
   background: var(--paper);
   color: var(--ink);
 }
@@ -192,8 +193,42 @@
 }
 .b2b-add-box__upload input[type="file"] { font-size: 12px; max-width: 100%; }
 
+/* ---------- B2B patient cards (replaces the old table — a search
+   dropdown inside a scrollable table gets visually clipped by the
+   table's own overflow, so each patient is its own free-standing card
+   instead) ---------- */
+.b2b-patient-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+.b2b-patient-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.b2b-patient-card__row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.b2b-patient-card__label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--slate);
+}
+
 @media (max-width: 560px) {
-  .b2b-add-box__row { grid-template-columns: 1fr 1fr; }
+  .b2b-patient-card__row { grid-template-columns: 1fr 1fr; }
 }
 
 /* ---------- B2B history (expandable) ---------- */
