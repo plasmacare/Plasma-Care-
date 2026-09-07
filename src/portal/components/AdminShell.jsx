@@ -14,6 +14,7 @@ import ViewsTab from '../pages/staff/ViewsTab'
 import StaffAccessTab from '../pages/staff/StaffAccessTab'
 import B2BRequestsTab from '../pages/staff/B2BRequestsTab'
 import CollectionsTab from '../pages/staff/CollectionsTab'
+import AdminNotifications from './AdminNotifications'
 import '../styles/admin.css'
 
 const ALL_TAB_DEFS = [
@@ -91,7 +92,10 @@ export default function AdminShell() {
           <img src={logoIcon} alt="" />
           <span>Plasma Care {role === 'admin' ? 'Admin' : (staffProfile?.role || 'Staff')}</span>
         </div>
-        <button className="btn btn--ghost" onClick={logout}>Logout</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AdminNotifications />
+          <button className="btn btn--ghost" onClick={logout}>Logout</button>
+        </div>
       </header>
 
       <NotificationBanner />
