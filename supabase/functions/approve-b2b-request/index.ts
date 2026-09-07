@@ -91,6 +91,8 @@ Deno.serve(async (req) => {
       phone: reqRow.phone,
       gstin: reqRow.gstin,
       address: reqRow.address,
+      latitude: reqRow.latitude,
+      longitude: reqRow.longitude,
     })
     if (acctErr) return json({ error: acctErr.message }, 500)
 
