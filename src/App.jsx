@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import PathologyBooking from './pages/PathologyBooking'
@@ -7,6 +7,8 @@ import PaymentStatus from './pages/PaymentStatus'
 import ReportView from './pages/ReportView'
 import SiteBackground from './components/SiteBackground'
 import Analytics from './components/Analytics'
+import MaintenanceScreen from './components/MaintenanceScreen'
+import { fetchMaintenanceSettings, subscribeMaintenanceSettings } from './lib/maintenance'
 
 // Staff/Admin/B2B portal — lazy-loaded so a first-time customer visiting
 // the booking site never downloads any of this code.
@@ -15,6 +17,18 @@ const PortalRoutes = lazy(() => import('./portal/PortalRoutes'))
 export default function App() {
   const location = useLocation()
   const isPortalRoute = location.pathname.startsWith('/portal')
+  const [maintenance, setMaintenance] = useState(null)
+
+  useEffect(() => {
+    fetchMaintenanceSettings().then(setMaintenance)
+    return subscribeMaintenanceSettings(setMaintenance)
+  }, [])
+
+  // /portal/* is never blocked by customer maintenance — staff, admin,
+  // developer, and B2B logins are unaffected by this toggle.
+  if (!isPortalRoute && maintenance?.maintenance_customer) {
+    return <MaintenanceScreen message={maintenance.maintenance_message} />
+  }
 
   return (
     <>
