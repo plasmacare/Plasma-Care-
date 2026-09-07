@@ -29,8 +29,8 @@ export default function B2BBulkAdd() {
     fetchTests().then(setTests).catch(() => {})
   }, [])
 
-  // One combined list so a single dropdown can offer both packages and
-  // individual tests, tagged so we know which table an id belongs to.
+  // One combined list so a single search box can offer both packages
+  // and individual tests, tagged so we know which table an id belongs to.
   const options = useMemo(
     () => [
       ...packages.map((p) => ({ key: `pkg:${p.id}`, id: p.id, kind: 'package', label: `${p.name} — ₹${p.price}` })),
@@ -47,8 +47,8 @@ export default function B2BBulkAdd() {
 
   // Auto-add: fires once name/age/gender are filled AND phone is either
   // left empty (phone is optional) or a full, valid number — never on a
-  // partial phone number mid-typing. Also offer an explicit button below
-  // for anyone who prefers not to rely on the auto-trigger.
+  // partial phone number mid-typing. There's also an explicit button
+  // below for anyone who prefers not to rely on the auto-trigger.
   useEffect(() => {
     const { name, age, gender, phone } = draft
     const phoneDigits = phone.trim().replace(/\D/g, '')
@@ -113,6 +113,10 @@ export default function B2BBulkAdd() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    if (!preferredDate) {
+      setError('Pick a preferred date — it becomes the scheduled date for every booking in this batch.')
+      return
+    }
     if (patients.length === 0) {
       setError('Add at least one patient below.')
       return
@@ -159,9 +163,9 @@ export default function B2BBulkAdd() {
 
       <div className="b2b-add-box">
         <p className="portal-form__hint" style={{ marginBottom: 8 }}>
-          Fill a patient's details — they're added to the list automatically once all four are filled in.
+          Fill a patient's details — they're added to the list automatically once all filled in.
         </p>
-        <div className="b2b-add-box__row">
+        <div className="b2b-add-box__stack">
           <input
             ref={nameInputRef}
             placeholder="Name"
@@ -210,42 +214,32 @@ export default function B2BBulkAdd() {
       </div>
 
       {patients.length > 0 && (
-        <div className="b2b-table-wrap" style={{ marginTop: 16 }}>
-          <table className="b2b-table">
-            <thead>
-              <tr>
-                <th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Test / Package</th><th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {patients.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td>{p.age}</td>
-                  <td>{p.gender}</td>
-                  <td>{p.phone}</td>
-                  <td>
-                    <TestPackageSearchSelect
-                      tests={tests}
-                      packages={packages}
-                      value={options.find((o) => o.key === p.optionKey)?.label.replace(/ — ₹.*/, '') || ''}
-                      onSelect={(opt) => setPatientOption(p.id, opt.key)}
-                      placeholder="Search test/package…"
-                    />
-                  </td>
-                  <td>
-                    <button type="button" className="btn btn--ghost" onClick={() => removePatient(p.id)}>Remove</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="b2b-patient-cards">
+          {patients.map((p) => (
+            <div key={p.id} className="b2b-patient-card">
+              <div className="b2b-patient-card__row">
+                <div><span className="b2b-patient-card__label">Name</span>{p.name}</div>
+                <div><span className="b2b-patient-card__label">Age</span>{p.age}</div>
+                <div><span className="b2b-patient-card__label">Gender</span>{p.gender}</div>
+                <div><span className="b2b-patient-card__label">Phone</span>{p.phone || '—'}</div>
+              </div>
+              <TestPackageSearchSelect
+                tests={tests}
+                packages={packages}
+                value={options.find((o) => o.key === p.optionKey)?.label.replace(/ — ₹.*/, '') || ''}
+                onSelect={(opt) => setPatientOption(p.id, opt.key)}
+                placeholder="Search test/package…"
+              />
+              <button type="button" className="btn btn--ghost" onClick={() => removePatient(p.id)}>Remove</button>
+            </div>
+          ))}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="portal-form" style={{ marginTop: 20 }}>
-        <label>Preferred date (optional)</label>
-        <input type="date" value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} />
+        <label>Preferred date *</label>
+        <input type="date" required value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} />
+        <p className="portal-form__hint">This becomes the scheduled date for every booking in this batch.</p>
 
         <label>Notes for staff (optional)</label>
         <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
