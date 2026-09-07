@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePortalAuth } from '../../lib/portalAuth.jsx'
 import { fetchRecentLogs, fetchLogCounts, subscribeToLogs } from './devLogs'
+import { fetchMaintenanceSettings } from '../../../lib/maintenance'
+import { supabase } from '../../../lib/supabase'
 import '../portal.css'
 import './devPulse.css'
 
@@ -66,6 +68,8 @@ export default function DevPulse() {
 
       {error && <p className="login-error">{error}</p>}
 
+      <MaintenancePanel />
+
       <div className="dev-pulse__stats">
         <div className="dev-pulse__stat dev-pulse__stat--error">
           <div className="dev-pulse__stat-value">{counts?.errorsToday ?? '—'}</div>
@@ -109,6 +113,82 @@ export default function DevPulse() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function MaintenancePanel() {
+  const [settings, setSettings] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchMaintenanceSettings().then(setSettings)
+  }, [])
+
+  async function toggle(field) {
+    if (!settings) return
+    const next = { ...settings, [field]: !settings[field] }
+    setSettings(next)
+    setSaving(true)
+    setError('')
+    try {
+      const { error } = await supabase.from('site_settings').update({ [field]: next[field] }).eq('id', 1)
+      if (error) throw error
+    } catch (err) {
+      setError(err.message)
+      setSettings(settings) // revert on failure
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveMessage() {
+    setSaving(true)
+    setError('')
+    try {
+      const { error } = await supabase.from('site_settings').update({ maintenance_message: settings.maintenance_message }).eq('id', 1)
+      if (error) throw error
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!settings) return null
+
+  return (
+    <div className="dev-pulse__maintenance">
+      <h3>Maintenance mode</h3>
+      <p className="portal-form__hint">
+        Admin and developer logins are always exempt — this never locks you out of the panel you'd need to turn it back off from.
+      </p>
+      {error && <p className="login-error">{error}</p>}
+      <div className="dev-pulse__maintenance-toggles">
+        <label>
+          <input type="checkbox" checked={settings.maintenance_customer} disabled={saving} onChange={() => toggle('maintenance_customer')} />
+          Customer site
+        </label>
+        <label>
+          <input type="checkbox" checked={settings.maintenance_staff} disabled={saving} onChange={() => toggle('maintenance_staff')} />
+          Staff panel
+        </label>
+        <label>
+          <input type="checkbox" checked={settings.maintenance_b2b} disabled={saving} onChange={() => toggle('maintenance_b2b')} />
+          B2B panel
+        </label>
+      </div>
+      <label className="portal-form__hint" style={{ display: 'block', marginTop: 10 }}>
+        Message shown to visitors (optional)
+        <textarea
+          rows={2}
+          style={{ width: '100%', marginTop: 4 }}
+          value={settings.maintenance_message || ''}
+          onChange={(e) => setSettings({ ...settings, maintenance_message: e.target.value })}
+          onBlur={saveMessage}
+        />
+      </label>
     </div>
   )
 }

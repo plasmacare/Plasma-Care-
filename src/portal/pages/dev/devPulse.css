@@ -124,3 +124,20 @@
   overflow-x: auto;
   margin: 4px 0 0;
 }
+
+.dev-pulse__maintenance {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 18px;
+}
+.dev-pulse__maintenance h3 { margin: 0 0 4px; font-size: 15px; color: var(--navy-950); }
+.dev-pulse__maintenance-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.dev-pulse__maintenance-toggles label { display: flex; align-items: center; gap: 6px; }
