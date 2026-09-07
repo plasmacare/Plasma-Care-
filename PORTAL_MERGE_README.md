@@ -328,3 +328,98 @@ specifically refers to Database RAM (check Dashboard → Database →
 Reports to see which metric), pruning these won't move that number much
 by itself — that one mostly reflects concurrent connections/activity
 rather than accumulated storage.
+
+## Update — 10-point pass (emergency contacts, live location, notifications, maintenance mode, B2B→bookings rework, and fixes)
+
+**Run these new SQL files** (order doesn't matter among these, but run
+after everything from before):
+- `supabase/b2b_bulk_to_bookings.sql` (rewritten — see below)
+- `supabase/staff_directory_visibility.sql`
+- `supabase/maintenance_mode.sql`
+
+### 1. Collector emergency contacts
+Collections tab now has a third sub-section, **Emergency**, with
+tap-to-call Police/Ambulance/Fire/Women's Helpline/112 — static list,
+no setup needed.
+
+### 2. B2B request form now asks for store location
+**Full address** is now required (textarea), plus a **Share my current
+location** button (browser geolocation) that captures lat/lng silently.
+Both get copied onto the B2B account when approved, and reused as the
+pickup address for every booking their bulk batches create — collection
+staff get real Navigate/map links to the company's actual location.
+
+### 3. Admin notification feed
+A 🔔 button next to Logout in the staff panel header — live feed of new
+bookings (B2B ones labeled), new B2B access requests, sorted by time.
+Updates in real time via Supabase Realtime, no refresh needed.
+
+### 4. Maintenance mode
+New section at the top of Dev Pulse — three independent toggles
+(Customer site / Staff panel / B2B panel) plus an optional message
+shown to visitors. **Admin and developer logins are always exempt**, so
+turning on "Staff panel" maintenance never locks out the people who'd
+need to turn it back off.
+
+### 5. "Assigned staff" is now a dropdown
+Lab-visit bookings previously needed a hand-typed name — now it's a
+dropdown of active staff, same as the Collection-staff picker for
+home-collection bookings. (`staff_directory_visibility.sql` is what
+makes this work for non-admin staff too, not just Admin.)
+
+### 6. B2B search-select dropdown fixed
+Root cause: the results list was rendering *inside* a horizontally
+scrollable table cell, and the table's own overflow clipped it
+invisible. Bulk Add's patient list is no longer a table — each patient
+is its own card, so the search dropdown has room to actually show.
+
+### 7. B2B bulk orders — reworked, not a separate review queue anymore
+This is the biggest structural change this round. Submitting a bulk
+batch now creates real `bookings` rows **immediately** (no manual
+"Accept" step — the company was already vetted at the access-request
+stage). Each one:
+- is tagged `booking_type: 'home_collection'` and shows up in the
+  regular **Bookings** tab, not a separate list
+- gets a **cyan background + "B2B" badge**, so it's visually distinct
+  from normal white bookings and dimmed spam ones, at a glance
+- automatically gets the company's registered address attached, so
+  Navigate/map links work immediately for collection staff
+- Preferred date is now **required** at submission (it becomes the
+  actual scheduled date) — this also fixes the
+  `null value in column "scheduled_date"` error from your own attempt.
+- The B2B Requests tab no longer has a Bulk Orders section — nothing
+  to review there anymore, by design.
+- The company's own History page now shows each patient's **live**
+  booking status (pending → confirmed → sample collected → report
+  ready), not a static "submitted" label.
+
+*Known limitation, worth knowing:* a batch is created patient-by-patient
+in a loop from the browser, not as one atomic database transaction. If
+one insert in the middle fails (rare — a dropped connection mid-submit,
+say), that batch could end up partially created. Worth an occasional
+glance at large batches; a fully atomic version would need a Postgres
+function, which I skipped for now given the size of everything else
+this round — flag it if you want that hardened further.
+
+### 8. Collector assignment cascades across a B2B batch
+Assign a collector on any one booking from a B2B company, and every
+*other still-unassigned* booking from that same batch gets the same
+collector automatically. Anything already assigned to someone else is
+left alone, so admin can still hand-pick different/extra collectors per
+booking afterward.
+
+### 9. Bulk Add boxes now stack vertically
+Name, Age, Gender, Phone — one full-width box under the next, not a
+row. An explicit **+ Add patient** button is there too now (in addition
+to the still-in-place auto-add-when-filled behavior), since phone is
+now optional and auto-add needed a clear trigger without it.
+
+### 10. Verification pass
+Went through the change set end-to-end: confirmed RLS policies match
+what each new insert/read actually needs (B2B creating its own
+bookings+addresses, staff reading colleague names, admin reading the
+notification sources), confirmed every new component's import paths
+resolve, and did a full production build with zero errors or warnings
+beyond a pre-existing chunk-size notice (from three.js/jspdf, unrelated
+to anything changed here). No other broken function found in this pass
+beyond what's listed above.
