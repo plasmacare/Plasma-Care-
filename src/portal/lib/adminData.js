@@ -41,6 +41,17 @@ export async function updateBookingStaff(id, assignedStaff) {
 }
 
 /** Fetches active collection-staff accounts (role='collector') with their current open-job count, so the admin can see who's free before assigning. */
+/** Every active staff/admin login — for the plain "Assigned staff" dropdown on lab-visit bookings. */
+export async function fetchAllStaff() {
+  const { data, error } = await supabase
+    .from('staff_profiles')
+    .select('id, full_name, email')
+    .eq('is_active', true)
+    .order('full_name', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
 export async function fetchCollectorsWithLoad() {
   const [{ data: collectors, error: cErr }, { data: openJobs, error: jErr }] = await Promise.all([
     // Anyone with the "collections" tab enabled (via Access), not a

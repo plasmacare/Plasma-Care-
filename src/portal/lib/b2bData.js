@@ -10,43 +10,27 @@ export async function fetchMyBulkRequests() {
 }
 
 // patients: [{ name, age, gender, phone, package_id, individual_test_id, test_label }, ...]
-// Each patient carries their own test/package now — a batch can mix
-// different tests per person, so nothing at the request level forces
-// one test for the whole company.
+// Each patient carries their own test/package — a batch can mix
+// different tests per person.
+//
+// This creates real `bookings` rows immediately (one per patient, tagged
+// booking_type='home_collection' so they enter the same collection-staff
+// dispatch flow as any other home-collection booking) — no separate
+// admin "accept" step, since the company was already vetted when their
+// access request was approved. The `b2b_bulk_requests` row itself is
+// kept purely as a batch record for the company's own History page.
 export async function submitBulkRequest({ b2bAccountId, preferredDate, patients, notes }) {
-  const { error } = await supabase.from('b2b_bulk_requests').insert({
-    b2b_account_id: b2bAccountId,
-    preferred_date: preferredDate || null,
-    patients,
-    notes: notes || null,
-  })
-  if (error) throw error
-}
+  if (!preferredDate) {
+    throw new Error('Preferred date is required.')
+  }
 
-// ---------- Admin/staff side ----------
+  const { data: account, error: acctErr } = await supabase
+    .from('b2b_accounts')
+    .select('company_name, phone, address, latitude, longitude')
+    .eq('id', b2bAccountId)
+    .single()
+  if (acctErr) throw acctErr
 
-export async function fetchAllBulkRequests() {
-  const { data, error } = await supabase
-    .from('b2b_bulk_requests')
-    .select('*, b2b_accounts(company_name, contact_name, phone, email)')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data || []
-}
-
-export async function updateBulkRequestStatus(id, status) {
-  const { error } = await supabase.from('b2b_bulk_requests').update({ status }).eq('id', id)
-  if (error) throw error
-}
-
-/**
- * Converts every patient in a bulk order into a real row in `bookings` —
- * the same table normal customer bookings live in. This is what makes a
- * bulk order show up and behave like a normal booking afterward (status
- * workflow, collection assignment, report generation). Safe to call only
- * once per order — the caller should check `bookings_created` first.
- */
-export async function convertBulkRequestToBookings(order) {
   const [{ data: packages }, { data: tests }] = await Promise.all([
     supabase.from('packages').select('id, price'),
     supabase.from('individual_tests').select('id, price'),
@@ -56,47 +40,60 @@ export async function convertBulkRequestToBookings(order) {
     ...(tests || []).map((t) => [t.id, t.price]),
   ])
 
-  const createdIds = []
-  for (const patient of order.patients || []) {
+  const { data: batch, error: batchErr } = await supabase
+    .from('b2b_bulk_requests')
+    .insert({
+      b2b_account_id: b2bAccountId,
+      preferred_date: preferredDate,
+      patients,
+      notes: notes || null,
+      status: 'submitted',
+      bookings_created: true,
+    })
+    .select('id')
+    .single()
+  if (batchErr) throw batchErr
+
+  for (const patient of patients) {
     const selectedPackages = patient.package_id ? [patient.package_id] : []
     const selectedTests = patient.individual_test_id ? [patient.individual_test_id] : []
     const priceKey = patient.package_id || patient.individual_test_id
     const totalAmount = priceKey ? priceById.get(priceKey) || 0 : 0
 
-    const { data: booking, error } = await supabase
+    const { data: booking, error: bookingErr } = await supabase
       .from('bookings')
       .insert({
-        customer_name: order.b2b_accounts?.company_name || patient.name,
-        customer_phone: patient.phone || order.b2b_accounts?.phone || '',
-        booking_type: 'lab_visit',
+        customer_name: patient.name,
+        customer_phone: patient.phone || account.phone || '',
+        booking_type: 'home_collection',
         selected_packages: selectedPackages,
         selected_tests: selectedTests,
         total_amount: totalAmount,
-        scheduled_date: order.preferred_date || null,
-        status: 'confirmed',
+        scheduled_date: preferredDate,
+        status: 'pending',
         patient_name: patient.name,
         patient_age: patient.age ? Number(patient.age) : null,
         patient_gender: patient.gender ? patient.gender.toLowerCase() : null,
-        b2b_bulk_request_id: order.id,
-        b2b_account_id: order.b2b_account_id,
-        admin_notes: order.notes || null,
+        b2b_bulk_request_id: batch.id,
+        b2b_account_id: b2bAccountId,
+        admin_notes: notes || null,
       })
       .select('id')
       .single()
-    if (error) throw error
-    createdIds.push(booking.id)
+    if (bookingErr) throw bookingErr
+
+    if (account.address) {
+      await supabase.from('addresses').insert({
+        booking_id: booking.id,
+        full_address: account.address,
+        latitude: account.latitude,
+        longitude: account.longitude,
+      })
+    }
   }
-
-  const { error: updateErr } = await supabase
-    .from('b2b_bulk_requests')
-    .update({ status: 'processing', bookings_created: true })
-    .eq('id', order.id)
-  if (updateErr) throw updateErr
-
-  return createdIds
 }
 
-/** For the B2B company's own History page — report status/links for bookings that came from their converted bulk orders. */
+/** For the B2B company's own History page — live status/report links for the real bookings created from a batch. */
 export async function fetchBookingsForBulkRequest(bulkRequestId) {
   const { data, error } = await supabase
     .from('bookings')
