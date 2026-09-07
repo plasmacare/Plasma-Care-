@@ -18,8 +18,37 @@ export default function CollectionsTab() {
       <div className="collections-subnav">
         <button className={subTab === 'jobs' ? 'active' : ''} onClick={() => setSubTab('jobs')} type="button">Jobs</button>
         <button className={subTab === 'history' ? 'active' : ''} onClick={() => setSubTab('history')} type="button">History</button>
+        <button className={subTab === 'emergency' ? 'active' : ''} onClick={() => setSubTab('emergency')} type="button">Emergency</button>
       </div>
-      {subTab === 'jobs' ? <JobsList /> : <HistoryList />}
+      {subTab === 'jobs' && <JobsList />}
+      {subTab === 'history' && <HistoryList />}
+      {subTab === 'emergency' && <EmergencyPanel />}
+    </div>
+  )
+}
+
+const EMERGENCY_CONTACTS = [
+  { label: 'Police', number: '100' },
+  { label: 'Ambulance', number: '108' },
+  { label: 'Fire', number: '101' },
+  { label: 'Women\u2019s Helpline', number: '1091' },
+  { label: 'National Emergency Number', number: '112' },
+]
+
+function EmergencyPanel() {
+  return (
+    <div>
+      <p className="portal-form__hint" style={{ marginBottom: 12 }}>
+        Tap a number to call directly while you're out on a collection.
+      </p>
+      <div className="collections-jobs">
+        {EMERGENCY_CONTACTS.map((c) => (
+          <a key={c.number} href={`tel:${c.number}`} className="job-card emergency-card">
+            <span className="job-card__name">{c.label}</span>
+            <span className="emergency-card__number">{c.number}</span>
+          </a>
+        ))}
+      </div>
     </div>
   )
 }

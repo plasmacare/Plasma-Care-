@@ -1,30 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { logEvent } from '../../../lib/telemetry'
-import { fetchAllBulkRequests, updateBulkRequestStatus, convertBulkRequestToBookings } from '../../lib/b2bData'
-import './collectionsTab.css'
-
-const BULK_STATUSES = ['submitted', 'processing', 'completed', 'cancelled']
 
 export default function B2BRequestsTab() {
-  const [subTab, setSubTab] = useState('access')
-
-  return (
-    <div className="tab-panel">
-      <div className="collections-subnav">
-        <button className={subTab === 'access' ? 'active' : ''} onClick={() => setSubTab('access')} type="button">
-          Access Requests
-        </button>
-        <button className={subTab === 'orders' ? 'active' : ''} onClick={() => setSubTab('orders')} type="button">
-          Bulk Orders
-        </button>
-      </div>
-      {subTab === 'access' ? <AccessRequestsPanel /> : <BulkOrdersPanel />}
-    </div>
-  )
-}
-
-function AccessRequestsPanel() {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
@@ -106,211 +84,101 @@ function AccessRequestsPanel() {
   const resolved = rows.filter((r) => r.status !== 'pending')
 
   return (
-    <div>
+    <div className="tab-panel">
       {error && <p className="login-error">{error}</p>}
 
       <h3 style={{ marginBottom: 12 }}>Pending ({pending.length})</h3>
       {pending.length === 0 && <p style={{ color: '#666' }}>No pending requests.</p>}
       <div className="admin-table-wrap">
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Company</th>
-            <th>Contact</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>GSTIN</th>
-            <th>Message</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {pending.map((row) => (
-            <tr key={row.id}>
-              <td>{row.company_name}</td>
-              <td>{row.contact_name}</td>
-              <td>{row.email}</td>
-              <td>{row.phone}</td>
-              <td>{row.gstin || '—'}</td>
-              <td style={{ maxWidth: 200 }}>{row.message || '—'}</td>
-              <td style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn--primary" disabled={busyId === row.id} onClick={() => invite(row)}>
-                  {busyId === row.id ? '…' : 'Approve'}
-                </button>
-                <button className="btn btn--ghost" disabled={busyId === row.id} onClick={() => reject(row)}>
-                  Reject
-                </button>
-              </td>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Contact</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>GSTIN</th>
+              <th>Address</th>
+              <th>Message</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {pending.map((row) => (
+              <tr key={row.id}>
+                <td>{row.company_name}</td>
+                <td>{row.contact_name}</td>
+                <td>{row.email}</td>
+                <td>{row.phone}</td>
+                <td>{row.gstin || '—'}</td>
+                <td style={{ maxWidth: 200 }}>
+                  {row.address || '—'}
+                  {row.latitude && row.longitude && (
+                    <>
+                      {' '}
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${row.latitude},${row.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        (map)
+                      </a>
+                    </>
+                  )}
+                </td>
+                <td style={{ maxWidth: 200 }}>{row.message || '—'}</td>
+                <td style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn--primary" disabled={busyId === row.id} onClick={() => invite(row)}>
+                    {busyId === row.id ? '…' : 'Approve'}
+                  </button>
+                  <button className="btn btn--ghost" disabled={busyId === row.id} onClick={() => reject(row)}>
+                    Reject
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {resolved.length > 0 && (
         <>
           <h3 style={{ margin: '24px 0 12px' }}>Past requests</h3>
           <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Company</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {resolved.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.company_name}</td>
-                  <td>{row.email}</td>
-                  <td style={{ textTransform: 'capitalize' }}>{row.status}</td>
-                  <td>
-                    {row.status === 'approved' && (
-                      <button className="btn btn--ghost" disabled={busyId === row.id} onClick={() => invite(row, { isResend: true })}>
-                        {busyId === row.id ? '…' : 'Resend invite'}
-                      </button>
-                    )}
-                  </td>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {resolved.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.company_name}</td>
+                    <td>{row.email}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{row.status}</td>
+                    <td>
+                      {row.status === 'approved' && (
+                        <button className="btn btn--ghost" disabled={busyId === row.id} onClick={() => invite(row, { isResend: true })}>
+                          {busyId === row.id ? '…' : 'Resend invite'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}
-    </div>
-  )
-}
 
-function BulkOrdersPanel() {
-  const [orders, setOrders] = useState(null)
-  const [error, setError] = useState('')
-  const [expandedId, setExpandedId] = useState(null)
-  const [savingId, setSavingId] = useState(null)
-  const [convertingId, setConvertingId] = useState(null)
-
-  async function load() {
-    try {
-      setOrders(await fetchAllBulkRequests())
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  useEffect(() => {
-    load()
-  }, [])
-
-  async function changeStatus(order, status) {
-    setSavingId(order.id)
-    setError('')
-    try {
-      await updateBulkRequestStatus(order.id, status)
-      await load()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSavingId(null)
-    }
-  }
-
-  async function handleConvert(order) {
-    setConvertingId(order.id)
-    setError('')
-    try {
-      const ids = await convertBulkRequestToBookings(order)
-      logEvent({
-        type: 'b2b_bulk_request_converted',
-        source: 'admin',
-        message: `Converted bulk order to ${ids.length} booking(s): ${order.b2b_accounts?.company_name || ''}`,
-        metadata: { bulk_request_id: order.id, booking_ids: ids },
-      })
-      await load()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setConvertingId(null)
-    }
-  }
-
-  if (orders === null) return <p>Loading…</p>
-
-  return (
-    <div>
-      {error && <p className="login-error">{error}</p>}
-      {orders.length === 0 ? (
-        <p style={{ color: '#666' }}>No bulk orders submitted yet.</p>
-      ) : (
-        <div className="collections-jobs">
-          {orders.map((order) => {
-            const isOpen = expandedId === order.id
-            const company = order.b2b_accounts
-            return (
-              <div key={order.id} className="job-card">
-                <button
-                  type="button"
-                  className="job-card__top"
-                  style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                  onClick={() => setExpandedId(isOpen ? null : order.id)}
-                >
-                  <span className={`badge badge--${order.status}`}>{order.status}</span>
-                  <span className="job-card__time">{new Date(order.created_at).toLocaleDateString('en-IN')}</span>
-                </button>
-                <div className="job-card__name">{company?.company_name || 'Unknown company'}</div>
-                <div className="job-card__items">
-                  {order.patients?.length || 0} patient(s)
-                  {order.preferred_date ? ` — preferred ${order.preferred_date}` : ''}
-                  {company?.phone ? ` — ${company.phone}` : ''}
-                </div>
-
-                {isOpen && (
-                  <>
-                    {order.notes && <p style={{ fontSize: 13 }}><strong>Notes:</strong> {order.notes}</p>}
-                    <div className="b2b-table-wrap">
-                      <table className="b2b-table">
-                        <thead>
-                          <tr><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Test / Package</th></tr>
-                        </thead>
-                        <tbody>
-                          {(order.patients || []).map((p, i) => (
-                            <tr key={i}>
-                              <td>{p.name}</td><td>{p.age}</td><td>{p.gender}</td><td>{p.phone || '—'}</td><td>{p.test_label || '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-
-                <div className="job-card__primary-actions">
-                  {order.bookings_created ? (
-                    <span className="portal-form__hint">✓ Bookings created — manage them from the Bookings tab.</span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn btn--primary"
-                      disabled={convertingId === order.id}
-                      onClick={() => handleConvert(order)}
-                    >
-                      {convertingId === order.id ? 'Creating…' : `Accept & create ${order.patients?.length || 0} booking(s)`}
-                    </button>
-                  )}
-                  <select
-                    value={order.status}
-                    disabled={savingId === order.id}
-                    onChange={(e) => changeStatus(order, e.target.value)}
-                  >
-                    {BULK_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <p className="portal-form__hint" style={{ marginTop: 20 }}>
+        Bulk orders from approved companies now appear directly in the <strong>Bookings</strong> tab
+        (marked with a cyan "B2B" badge) — no separate review step here anymore.
+      </p>
     </div>
   )
 }

@@ -3,7 +3,7 @@ import {
   fetchLookups, fetchBookings, updateBookingStatus, updateBookingStaff,
   updateCallStatus, updateAdminNotes, setSpamFlag, uploadReport, skipReport, resetReport, deleteBooking,
   updatePrescriptionNotes, computeStats, computeSpamFlags, STATUSES,
-  fetchCollectorsWithLoad, assignCollector,
+  fetchCollectorsWithLoad, assignCollector, fetchAllStaff,
 } from '../../lib/adminData'
 import { exportBookingsCsv } from '../../lib/csvExport'
 import MapPreview from '../../components/MapPreview'
@@ -57,11 +57,13 @@ export default function Dashboard() {
   const [hideSpam, setHideSpam] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
   const [collectors, setCollectors] = useState([])
+  const [allStaff, setAllStaff] = useState([])
 
   useEffect(() => {
     fetchLookups().then(setLookups).catch(() => {})
     fetchPaymentSettings().then(setPaymentSettings).catch(() => {})
     fetchCollectorsWithLoad().then(setCollectors).catch(() => {})
+    fetchAllStaff().then(setAllStaff).catch(() => {})
   }, [])
 
   async function load() {
@@ -128,6 +130,24 @@ export default function Dashboard() {
     patch(booking.id, { assigned_collector_id: collectorId || null, collection_status: collectorId ? 'assigned' : 'unassigned' })
     try {
       await assignCollector(booking.id, collectorId)
+
+      // B2B batches: assigning a collector on one of the company's
+      // bookings applies to every other still-unassigned booking from
+      // that same batch too — admin doesn't have to repeat this per
+      // employee. Anyone who already got a different collector (or was
+      // deliberately left unassigned after this) is untouched, so admin
+      // can still hand-pick extra/different collectors per booking
+      // afterward.
+      if (collectorId && booking.b2b_account_id) {
+        const siblingIds = bookings
+          .filter((b) => b.id !== booking.id && b.b2b_account_id === booking.b2b_account_id && !b.assigned_collector_id)
+          .map((b) => b.id)
+        for (const id of siblingIds) {
+          patch(id, { assigned_collector_id: collectorId, collection_status: 'assigned' })
+          await assignCollector(id, collectorId)
+        }
+      }
+
       logEvent({
         type: 'collector_assigned',
         source: 'admin',
@@ -282,6 +302,7 @@ export default function Dashboard() {
             lookups={lookups}
             paymentSettings={paymentSettings}
             collectors={collectors}
+            allStaff={allStaff}
             expanded={expandedId === b.id}
             onToggle={() => setExpandedId(expandedId === b.id ? null : b.id)}
             onStatusChange={(s) => handleStatusChange(b, s)}
@@ -313,7 +334,7 @@ function StatCard({ label, value, accent }) {
 }
 
 function BookingCard({
-  booking, lookups, paymentSettings, collectors, expanded, onToggle, onStatusChange, onStaffChange,
+  booking, lookups, paymentSettings, collectors, allStaff, expanded, onToggle, onStatusChange, onStaffChange,
   onCollectorChange, onCallStatus, onNotes, onSpamToggle, onDelete, onReportUpload, onReportSkip, onReportReset, onPrescriptionNotes,
   onBookingPatch,
 }) {
@@ -323,10 +344,11 @@ function BookingCard({
   const isFlagged = booking.spamReasons?.length > 0
 
   return (
-    <div className={`booking-card status--${booking.status}${booking.is_spam ? ' booking-card--spam' : ''}`}>
+    <div className={`booking-card status--${booking.status}${booking.is_spam ? ' booking-card--spam' : ''}${booking.b2b_account_id ? ' booking-card--b2b' : ''}`}>
       <button type="button" className="booking-card__summary" onClick={onToggle}>
         <div className="booking-card__main">
           <span className="booking-card__name">
+            {booking.b2b_account_id && <span className="b2b-badge">B2B</span>}
             {booking.customer_name || 'Unnamed'}
             {isFlagged && <span className="spam-dot" title={booking.spamReasons.join(', ')}>⚠</span>}
           </span>
@@ -435,12 +457,17 @@ function BookingCard({
             ) : (
               <label>
                 Assigned staff
-                <input
-                  type="text"
-                  defaultValue={booking.assigned_staff || ''}
-                  placeholder="Staff name"
-                  onBlur={(e) => onStaffChange(e.target.value)}
-                />
+                <select
+                  value={booking.assigned_staff || ''}
+                  onChange={(e) => onStaffChange(e.target.value)}
+                >
+                  <option value="">— Unassigned —</option>
+                  {allStaff.map((s) => (
+                    <option key={s.id} value={s.full_name || s.email}>
+                      {s.full_name || s.email}
+                    </option>
+                  ))}
+                </select>
               </label>
             )}
           </div>
