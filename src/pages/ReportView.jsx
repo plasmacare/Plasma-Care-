@@ -11,12 +11,10 @@ export default function ReportView() {
 
   useEffect(() => {
     supabase
-      .from('bookings')
-      .select('report_url, report_status')
-      .eq('id', bookingId)
-      .single()
+      .rpc('rpc_get_booking', { p_id: bookingId })
       .then(({ data, error: err }) => {
         if (err) throw err
+        if (!data) throw new Error('not found')
         setReportUrl(data.report_url)
       })
       .catch(() => setError('Could not find this report. Please check the link, or contact us at 8112060205.'))
