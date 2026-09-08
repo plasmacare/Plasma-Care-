@@ -44,28 +44,30 @@ export async function createBooking({
   address, // { fullAddress, landmark, latitude, longitude } | null
 }) {
   const customerIp = await fetchClientIp()
+  // Generated here (not read back from the DB) because the anon role no
+  // longer has SELECT on bookings — see secure_public_booking_access.sql.
+  // We already know every field we're inserting, so there's nothing to
+  // read back; this also means insert() no longer needs .select().
+  const id = crypto.randomUUID()
 
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .insert({
-      customer_name: customerName,
-      customer_phone: customerPhone,
-      booking_type: bookingType,
-      selected_packages: selectedPackages,
-      selected_tests: selectedTests,
-      total_amount: totalAmount,
-      scheduled_date: scheduledDate,
-      customer_ip: customerIp,
-      status: 'pending',
-    })
-    .select()
-    .single()
+  const { error: bookingError } = await supabase.from('bookings').insert({
+    id,
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    booking_type: bookingType,
+    selected_packages: selectedPackages,
+    selected_tests: selectedTests,
+    total_amount: totalAmount,
+    scheduled_date: scheduledDate,
+    customer_ip: customerIp,
+    status: 'pending',
+  })
 
   if (bookingError) throw bookingError
 
   if (bookingType === 'home_collection' && address) {
     const { error: addressError } = await supabase.from('addresses').insert({
-      booking_id: booking.id,
+      booking_id: id,
       full_address: address.fullAddress,
       landmark: address.landmark || null,
       latitude: address.latitude,
@@ -78,10 +80,20 @@ export async function createBooking({
     type: 'booking_created',
     source: 'customer',
     message: `New booking: ${bookingType}`,
-    metadata: { booking_id: booking.id, total_amount: totalAmount },
+    metadata: { booking_id: id, total_amount: totalAmount },
   })
 
-  return booking
+  return {
+    id,
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    booking_type: bookingType,
+    selected_packages: selectedPackages,
+    selected_tests: selectedTests,
+    total_amount: totalAmount,
+    scheduled_date: scheduledDate,
+    status: 'pending',
+  }
 }
 
 /** Uploads a (compressed) prescription photo and links it to the booking. */
@@ -91,30 +103,33 @@ export async function uploadPrescription(bookingId, file) {
   const { error: uploadError } = await supabase.storage.from('prescriptions').upload(path, compressed)
   if (uploadError) throw uploadError
   const { data } = supabase.storage.from('prescriptions').getPublicUrl(path)
-  const { error } = await supabase.from('bookings').update({ prescription_url: data.publicUrl }).eq('id', bookingId)
+  const { error } = await supabase.rpc('rpc_patch_booking', {
+    p_id: bookingId,
+    p_patch: { prescription_url: data.publicUrl },
+  })
   if (error) throw error
   return data.publicUrl
 }
 
 /** Records why a prescription upload failed so admin can see it and follow up, instead of the booking just quietly missing a photo. */
 export async function savePrescriptionUploadError(bookingId, message) {
-  const { error } = await supabase
-    .from('bookings')
-    .update({ prescription_upload_error: message || null })
-    .eq('id', bookingId)
+  const { error } = await supabase.rpc('rpc_patch_booking', {
+    p_id: bookingId,
+    p_patch: { prescription_upload_error: message || null },
+  })
   if (error) throw error
 }
 
 export async function savePatientDetails(bookingId, { name, age, gender, bloodGroup }) {
-  const { error } = await supabase
-    .from('bookings')
-    .update({
+  const { error } = await supabase.rpc('rpc_patch_booking', {
+    p_id: bookingId,
+    p_patch: {
       patient_name: name || null,
       patient_age: age ? Number(age) : null,
       patient_gender: gender || null,
       patient_blood_group: bloodGroup || null,
-    })
-    .eq('id', bookingId)
+    },
+  })
   if (error) throw error
 }
 
@@ -141,10 +156,10 @@ export async function analyzePrescription(file) {
 }
 
 export async function savePrescriptionAiResult(bookingId, { confidence, summary }) {
-  const { error } = await supabase
-    .from('bookings')
-    .update({ prescription_ai_confidence: confidence ?? null, prescription_ai_summary: summary || null })
-    .eq('id', bookingId)
+  const { error } = await supabase.rpc('rpc_patch_booking', {
+    p_id: bookingId,
+    p_patch: { prescription_ai_confidence: confidence ?? null, prescription_ai_summary: summary || null },
+  })
   if (error) throw error
 }
 
@@ -156,4 +171,3 @@ function fileToBase64(file) {
     reader.readAsDataURL(file)
   })
 }
-

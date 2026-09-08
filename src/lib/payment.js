@@ -70,16 +70,16 @@ export async function createPaymentRequest(booking, settings) {
       `&am=${encodeURIComponent(amount)}&cu=INR&tn=${encodeURIComponent(`Plasma Care ${booking.id.slice(0, 8).toUpperCase()}`)}`
   }
 
-  const { error: saveError } = await supabase
-    .from('bookings')
-    .update({
+  const { error: saveError } = await supabase.rpc('rpc_patch_booking', {
+    p_id: booking.id,
+    p_patch: {
       payment_requested_amount: amount,
       payment_method: settings.mode,
       payment_link: link,
       payment_status: 'requested',
       razorpay_payment_link_id: razorpayPaymentLinkId,
-    })
-    .eq('id', booking.id)
+    },
+  })
   if (saveError) throw saveError
 
   return { amount, method: settings.mode, link }
@@ -91,12 +91,9 @@ export function upiLinkToQrImageUrl(upiLink) {
 }
 
 export async function fetchBookingPayment(bookingId) {
-  const { data, error } = await supabase
-    .from('bookings')
-    .select('id, customer_name, total_amount, payment_status, payment_method, payment_link, payment_requested_amount, payment_screenshot_url')
-    .eq('id', bookingId)
-    .single()
+  const { data, error } = await supabase.rpc('rpc_get_booking', { p_id: bookingId })
   if (error) throw error
+  if (!data) throw new Error('Booking not found')
   return data
 }
 
@@ -106,10 +103,10 @@ export async function uploadPaymentScreenshot(bookingId, file) {
   const { error: uploadError } = await supabase.storage.from('payment-proofs').upload(path, file, { upsert: true })
   if (uploadError) throw uploadError
   const { data } = supabase.storage.from('payment-proofs').getPublicUrl(path)
-  const { error } = await supabase
-    .from('bookings')
-    .update({ payment_screenshot_url: data.publicUrl, payment_status: 'screenshot_uploaded' })
-    .eq('id', bookingId)
+  const { error } = await supabase.rpc('rpc_patch_booking', {
+    p_id: bookingId,
+    p_patch: { payment_screenshot_url: data.publicUrl, payment_status: 'screenshot_uploaded' },
+  })
   if (error) throw error
   return data.publicUrl
 }
