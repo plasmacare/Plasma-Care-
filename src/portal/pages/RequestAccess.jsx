@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { logEvent } from '../../lib/telemetry'
 import logoIcon from '../assets/logo-icon.png'
 import './portal.css'
 
+function slugifyUsername(text) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20)
+}
+
 export default function RequestAccess() {
   const [form, setForm] = useState({
-    company_name: '', contact_name: '', email: '', phone: '', gstin: '', address: '', message: '',
+    company_name: '', contact_name: '', email: '', phone: '', username: '', gstin: '', address: '', message: '',
   })
   const [location, setLocation] = useState(null) // { latitude, longitude }
   const [locating, setLocating] = useState(false)
@@ -16,9 +20,48 @@ export default function RequestAccess() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // Username availability
+  const [usernameStatus, setUsernameStatus] = useState('idle') // idle | checking | available | taken
+  const [usernameSuggestions, setUsernameSuggestions] = useState([])
+
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
   }
+
+  // Live-check username availability as they type (debounced).
+  useEffect(() => {
+    const username = form.username.trim()
+    if (!username) {
+      setUsernameStatus('idle')
+      setUsernameSuggestions([])
+      return
+    }
+    setUsernameStatus('checking')
+    const timer = setTimeout(async () => {
+      try {
+        const { data: available, error: rpcErr } = await supabase.rpc('is_b2b_username_available', { check_username: username })
+        if (rpcErr) throw rpcErr
+        if (available) {
+          setUsernameStatus('available')
+          setUsernameSuggestions([])
+        } else {
+          setUsernameStatus('taken')
+          // Offer a few quick alternatives so they don't have to guess.
+          const candidates = [`${username}1`, `${username}2`, `${username}_hq`, `${username}${new Date().getFullYear()}`]
+          const checks = await Promise.all(
+            candidates.map(async (c) => {
+              const { data: ok } = await supabase.rpc('is_b2b_username_available', { check_username: c })
+              return ok ? c : null
+            }),
+          )
+          setUsernameSuggestions(checks.filter(Boolean).slice(0, 3))
+        }
+      } catch {
+        setUsernameStatus('idle')
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [form.username])
 
   function captureLocation() {
     if (!navigator.geolocation) {
@@ -40,17 +83,43 @@ export default function RequestAccess() {
     )
   }
 
+  function phoneDigitsValid() {
+    const digits = form.phone.replace(/\D/g, '').replace(/^91/, '')
+    return /^[6-9]\d{9}$/.test(digits)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
+    if (!phoneDigitsValid()) {
+      setError('Enter a valid 10-digit Indian phone number (e.g. +91 98765 43210).')
+      return
+    }
+    if (!form.username.trim()) {
+      setError('Choose a username.')
+      return
+    }
+    if (usernameStatus === 'taken') {
+      setError('That username is already taken — pick one of the suggestions, or try another.')
+      return
+    }
+    if (usernameStatus === 'checking') {
+      setError('Still checking that username — one moment and try again.')
+      return
+    }
+
     setSubmitting(true)
     try {
-      const { error } = await supabase.from('b2b_requests').insert({
+      const digits = form.phone.replace(/\D/g, '').replace(/^91/, '')
+      const { error: err } = await supabase.from('b2b_requests').insert({
         ...form,
+        phone: `+91${digits}`,
+        username: form.username.trim(),
         latitude: location?.latitude ?? null,
         longitude: location?.longitude ?? null,
       })
-      if (error) throw error
+      if (err) throw err
       logEvent({ type: 'b2b_request_submitted', source: 'b2b', message: `New B2B request: ${form.company_name}`, metadata: { email: form.email } })
       setSubmitted(true)
     } catch (err) {
@@ -75,6 +144,8 @@ export default function RequestAccess() {
     )
   }
 
+  const canSubmit = phoneDigitsValid() && form.username.trim() && usernameStatus !== 'taken' && usernameStatus !== 'checking'
+
   return (
     <div className="portal-screen">
       <div className="portal-card portal-card--wide">
@@ -91,11 +162,46 @@ export default function RequestAccess() {
           <label>Contact person *</label>
           <input required value={form.contact_name} onChange={(e) => update('contact_name', e.target.value)} />
 
+          <label>Contact person's phone *</label>
+          <input
+            type="tel"
+            required
+            placeholder="+91 98765 43210"
+            value={form.phone}
+            onChange={(e) => update('phone', e.target.value)}
+          />
+          {form.phone && !phoneDigitsValid() && (
+            <p className="login-error">Enter a valid 10-digit Indian mobile number.</p>
+          )}
+
           <label>Email *</label>
           <input type="email" required value={form.email} onChange={(e) => update('email', e.target.value)} />
 
-          <label>Phone *</label>
-          <input type="tel" required value={form.phone} onChange={(e) => update('phone', e.target.value)} />
+          <label>Choose a username *</label>
+          <input
+            required
+            value={form.username}
+            onChange={(e) => update('username', slugifyUsername(e.target.value))}
+            placeholder="e.g. acmecorp"
+          />
+          {usernameStatus === 'checking' && <p className="portal-form__hint">Checking availability…</p>}
+          {usernameStatus === 'available' && <p className="portal-form__hint" style={{ color: '#1B8A5A' }}>✓ Username available</p>}
+          {usernameStatus === 'taken' && (
+            <>
+              <p className="login-error">That username is already taken.</p>
+              {usernameSuggestions.length > 0 && (
+                <p className="portal-form__hint">
+                  Try:{' '}
+                  {usernameSuggestions.map((s, i) => (
+                    <span key={s}>
+                      <button type="button" className="b2b-username-suggestion" onClick={() => update('username', s)}>{s}</button>
+                      {i < usernameSuggestions.length - 1 ? ', ' : ''}
+                    </span>
+                  ))}
+                </p>
+              )}
+            </>
+          )}
 
           <label>GSTIN (optional)</label>
           <input value={form.gstin} onChange={(e) => update('gstin', e.target.value)} />
@@ -128,7 +234,7 @@ export default function RequestAccess() {
 
           {error && <p className="login-error">{error}</p>}
 
-          <button type="submit" className="btn btn--primary" disabled={submitting}>
+          <button type="submit" className="btn btn--primary" disabled={submitting || !canSubmit}>
             {submitting ? 'Sending…' : 'Send Request'}
           </button>
         </form>
@@ -140,4 +246,3 @@ export default function RequestAccess() {
     </div>
   )
 }
-

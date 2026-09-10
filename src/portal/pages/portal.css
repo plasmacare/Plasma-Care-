@@ -230,6 +230,28 @@
 @media (max-width: 560px) {
   .b2b-patient-card__row { grid-template-columns: 1fr 1fr; }
 }
+.b2b-patient-card__price {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--navy-950);
+  margin: 0;
+}
+.b2b-total {
+  font-size: 14px;
+  color: var(--ink);
+  text-align: right;
+}
+.b2b-username-suggestion {
+  display: inline-block;
+  background: var(--navy-100);
+  color: var(--navy-800);
+  border: none;
+  border-radius: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 /* ---------- B2B history (expandable) ---------- */
 .b2b-history-list { display: flex; flex-direction: column; gap: 10px; }
@@ -259,4 +281,42 @@
   padding: 4px 14px 14px;
   border-top: 1px solid var(--line);
   font-size: 13px;
+}
+
+/* ---------- Account page ---------- */
+.account-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 480px;
+}
+.account-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.account-card h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy-950);
+  margin: 0 0 10px;
+}
+.account-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+}
+.account-details dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--slate);
+}
+.account-details dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
 }
