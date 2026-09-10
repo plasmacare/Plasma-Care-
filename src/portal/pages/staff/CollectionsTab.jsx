@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchMyJobs, fetchMyHistory, updateCollectionStatus, declineJob, subscribeToMyNewJobs } from '../../lib/collectionsData'
 import { fetchLookups } from '../../lib/adminData'
 import { logEvent } from '../../../lib/telemetry'
+import { supabase } from '../../../lib/supabase'
 import './collectionsTab.css'
 
 const NEXT_ACTION = {
@@ -30,16 +31,23 @@ export default function CollectionsTab() {
 const EMERGENCY_CONTACTS = [
   { label: 'Police', number: '100' },
   { label: 'Ambulance', number: '108' },
-  { label: 'Fire', number: '101' },
-  { label: 'Women\u2019s Helpline', number: '1091' },
   { label: 'National Emergency Number', number: '112' },
 ]
 
 function EmergencyPanel() {
+  const [seniorPhone, setSeniorPhone] = useState(null)
+
+  useEffect(() => {
+    supabase.from('site_settings').select('senior_contact_phone').eq('id', 1).single()
+      .then(({ data }) => setSeniorPhone(data?.senior_contact_phone || null))
+      .catch(() => {})
+  }, [])
+
   return (
     <div>
       <p className="portal-form__hint" style={{ marginBottom: 12 }}>
-        Tap a number to call directly while you're out on a collection.
+        Tap a number to call directly while you're out on a collection. For any work-related problem, contact your
+        senior — not general staff.
       </p>
       <div className="collections-jobs">
         {EMERGENCY_CONTACTS.map((c) => (
@@ -48,6 +56,12 @@ function EmergencyPanel() {
             <span className="emergency-card__number">{c.number}</span>
           </a>
         ))}
+        {seniorPhone && (
+          <a href={`tel:${seniorPhone}`} className="job-card emergency-card emergency-card--senior">
+            <span className="job-card__name">Your Senior</span>
+            <span className="emergency-card__number">{seniorPhone}</span>
+          </a>
+        )}
       </div>
     </div>
   )
@@ -170,7 +184,12 @@ function HistoryList() {
                 <span className="job-card__time">{job.scheduled_date}</span>
               </div>
               <div className="job-card__name">{job.customer_name}</div>
-              {job.address?.full_address && <div className="job-card__address">📍 {job.address.full_address}</div>}
+              {job.b2b_bulk_request_id && <span className="badge badge--b2b">B2B</span>}
+              {job.address?.full_address && (
+                <div className="job-card__address">
+                  {job.b2b_bulk_request_id ? '🏢 Store: ' : '📍 '}{job.address.full_address}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -200,10 +219,11 @@ function JobCard({ job, lookups, busy, onAccept, onDecline, onAdvance }) {
       </div>
 
       <div className="job-card__name">{job.customer_name}</div>
+      {job.b2b_bulk_request_id && <span className="badge badge--b2b">B2B</span>}
       <div className="job-card__items">{items.join(', ') || 'Test details unavailable'}</div>
 
       {job.address?.full_address && (
-        <div className="job-card__address">📍 {job.address.full_address}</div>
+        <div className="job-card__address">{job.b2b_bulk_request_id ? '🏢 Store: ' : '📍 '}{job.address.full_address}</div>
       )}
 
       <div className="job-card__actions">

@@ -73,3 +73,13 @@
   font-weight: 700;
   color: var(--red-600);
 }
+.emergency-card--senior {
+  border-left-color: var(--navy-800);
+}
+.emergency-card--senior .emergency-card__number {
+  color: var(--navy-800);
+}
+.badge--b2b {
+  background: var(--navy-100);
+  color: var(--navy-800);
+}

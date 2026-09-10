@@ -80,6 +80,14 @@ export default function ViewsTab() {
         </div>
       </div>
 
+      <div className="slots-form-card">
+        <h3>Collector emergency panel — senior contact</h3>
+        <p className="slots-form-card__hint">
+          Shown to collection staff for escalating problems while out on a job. Leave blank to hide it.
+        </p>
+        <SeniorContactField settings={settings} setSettings={setSettings} setError={setError} />
+      </div>
+
       {error && <p className="admin-error">{error}</p>}
 
       {loading ? (
@@ -130,6 +138,40 @@ function StatCard({ label, value, accent }) {
       {accent === 'live' && <span className="views-stat-card__dot" />}
       <span className="views-stat-card__value">{value}</span>
       <span className="views-stat-card__label">{label}</span>
+    </div>
+  )
+}
+
+function SeniorContactField({ settings, setSettings, setError }) {
+  const [value, setValue] = useState(settings?.senior_contact_phone || '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => setValue(settings?.senior_contact_phone || ''), [settings?.senior_contact_phone])
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await updateSiteSettings({ senior_contact_phone: value.trim() || null })
+      setSettings((s) => ({ ...s, senior_contact_phone: value.trim() || null }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <input
+        type="tel"
+        placeholder="+91 98765 43210"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        style={{ flex: 1 }}
+      />
+      <button type="button" className="btn btn--secondary" disabled={saving} onClick={handleSave}>
+        {saving ? 'Saving…' : 'Save'}
+      </button>
     </div>
   )
 }

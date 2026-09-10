@@ -6,6 +6,28 @@ export default function B2BRequestsTab() {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
+  const [mouBusyId, setMouBusyId] = useState(null)
+  const [notice, setNotice] = useState('')
+
+  async function uploadMou(row, file) {
+    setMouBusyId(row.id)
+    setError('')
+    setNotice('')
+    try {
+      const path = `${row.id}/${Date.now()}-${file.name}`
+      const { error: uploadErr } = await supabase.storage.from('mou-documents').upload(path, file, { upsert: true })
+      if (uploadErr) throw uploadErr
+      const { data } = supabase.storage.from('mou-documents').getPublicUrl(path)
+      const { error: updateErr } = await supabase.from('b2b_accounts').update({ mou_url: data.publicUrl }).eq('request_id', row.id)
+      if (updateErr) throw updateErr
+      logEvent({ type: 'b2b_mou_uploaded', source: 'admin', message: `MoU uploaded for ${row.company_name}`, metadata: { company: row.company_name } })
+      setNotice(`MoU uploaded for ${row.company_name}.`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setMouBusyId(null)
+    }
+  }
 
   async function load() {
     const { data, error } = await supabase
@@ -86,6 +108,7 @@ export default function B2BRequestsTab() {
   return (
     <div className="tab-panel">
       {error && <p className="login-error">{error}</p>}
+      {notice && <p className="portal-form__hint" style={{ color: '#1B8A5A' }}>{notice}</p>}
 
       <h3 style={{ marginBottom: 12 }}>Pending ({pending.length})</h3>
       {pending.length === 0 && <p style={{ color: '#666' }}>No pending requests.</p>}
@@ -95,6 +118,7 @@ export default function B2BRequestsTab() {
             <tr>
               <th>Company</th>
               <th>Contact</th>
+              <th>Username</th>
               <th>Email</th>
               <th>Phone</th>
               <th>GSTIN</th>
@@ -108,6 +132,7 @@ export default function B2BRequestsTab() {
               <tr key={row.id}>
                 <td>{row.company_name}</td>
                 <td>{row.contact_name}</td>
+                <td>{row.username || '—'}</td>
                 <td>{row.email}</td>
                 <td>{row.phone}</td>
                 <td>{row.gstin || '—'}</td>
@@ -151,6 +176,7 @@ export default function B2BRequestsTab() {
                   <th>Company</th>
                   <th>Email</th>
                   <th>Status</th>
+                  <th>MoU</th>
                   <th></th>
                 </tr>
               </thead>
@@ -160,6 +186,20 @@ export default function B2BRequestsTab() {
                     <td>{row.company_name}</td>
                     <td>{row.email}</td>
                     <td style={{ textTransform: 'capitalize' }}>{row.status}</td>
+                    <td>
+                      {row.status === 'approved' && (
+                        <label className="btn btn--ghost" style={{ display: 'inline-block', cursor: 'pointer' }}>
+                          {mouBusyId === row.id ? 'Uploading…' : 'Upload MoU'}
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,image/*"
+                            hidden
+                            disabled={mouBusyId === row.id}
+                            onChange={(e) => e.target.files[0] && uploadMou(row, e.target.files[0])}
+                          />
+                        </label>
+                      )}
+                    </td>
                     <td>
                       {row.status === 'approved' && (
                         <button className="btn btn--ghost" disabled={busyId === row.id} onClick={() => invite(row, { isResend: true })}>

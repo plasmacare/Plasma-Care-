@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchStaffProfiles, updateStaffProfile } from '../../lib/staffAccess'
 import { ALL_TABS } from '../../lib/portalAuth.jsx'
 import { logEvent } from '../../../lib/telemetry'
+import { supabase } from '../../../lib/supabase'
 
 // b2b-requests isn't assignable here — it's admin-only (the approval
 // action itself is also gated server-side in the edge function).
@@ -21,6 +22,8 @@ export default function StaffAccessTab() {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [savingId, setSavingId] = useState(null)
+  const [resettingId, setResettingId] = useState(null)
+  const [notice, setNotice] = useState('')
 
   async function load() {
     try {
@@ -63,6 +66,27 @@ export default function StaffAccessTab() {
     updateLocal(row.id, { allowed_tabs: next })
   }
 
+  // Sends a reset-password email — admin never sees or sets the actual
+  // password themselves, they just trigger the link to be sent, same
+  // pattern already used for B2B "Resend invite".
+  async function sendPasswordReset(row) {
+    setResettingId(row.id)
+    setError('')
+    setNotice('')
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(row.email, {
+        redirectTo: `${window.location.origin}/portal/login`,
+      })
+      if (err) throw err
+      logEvent({ type: 'staff_password_reset_sent', source: 'admin', message: `Password reset sent to ${row.email}`, metadata: { target: row.email } })
+      setNotice(`Reset link sent to ${row.email}.`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setResettingId(null)
+    }
+  }
+
   if (rows === null) return <div className="tab-panel">Loading…</div>
 
   return (
@@ -72,6 +96,7 @@ export default function StaffAccessTab() {
         (email + password). They'll automatically show up here as a row — set their role and tabs from this screen.
       </p>
       {error && <p className="login-error">{error}</p>}
+      {notice && <p className="portal-form__hint" style={{ color: '#1B8A5A' }}>{notice}</p>}
 
       <div className="admin-table-wrap">
       <table className="admin-table">
@@ -136,6 +161,14 @@ export default function StaffAccessTab() {
                   onClick={() => save(row)}
                 >
                   {savingId === row.id ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  className="btn btn--ghost"
+                  style={{ marginTop: 6 }}
+                  disabled={resettingId === row.id}
+                  onClick={() => sendPasswordReset(row)}
+                >
+                  {resettingId === row.id ? '…' : 'Send password reset'}
                 </button>
               </td>
             </tr>
