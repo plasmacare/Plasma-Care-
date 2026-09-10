@@ -8,6 +8,7 @@ import PortalMenu from '../components/PortalMenu'
 import AnnouncementPopup from '../components/AnnouncementPopup'
 import { useLanguage } from '../lib/i18n.jsx'
 import { fetchAvailableLegalPages } from '../lib/content'
+import { isSlowConnection } from '../lib/networkSpeed'
 import logoFull from '../assets/logo-full.png'
 import './Home.css'
 
@@ -16,14 +17,17 @@ const WHATSAPP_LINK = `https://wa.me/91${PHONE}`
 const EMAIL = 'official.plasmacare@gmail.com'
 const INSTAGRAM_HANDLE = 'official.plasmacare'
 const INSTAGRAM_LINK = 'https://instagram.com/official.plasmacare'
+const MAP_LINK = 'https://maps.app.goo.gl/UefDcbg6jgk9bjr5A'
 
 export default function Home() {
   const { t } = useLanguage()
   const [showContactSheet, setShowContactSheet] = useState(false)
   const [legalPages, setLegalPages] = useState([])
+  const [slowConnection, setSlowConnection] = useState(false)
 
   useEffect(() => {
     fetchAvailableLegalPages().then(setLegalPages).catch(() => {})
+    setSlowConnection(isSlowConnection())
   }, [])
 
   const OTHER_SERVICES = [
@@ -49,6 +53,11 @@ export default function Home() {
     <div className="home">
       <BloodDropWall />
       <AnnouncementPopup />
+      {slowConnection && (
+        <a href="/lite" className="home__slow-banner">
+          Slow connection detected — use the simplified booking page instead →
+        </a>
+      )}
       <div className="home__top-bar">
         <PortalMenu />
         <LanguageSwitcher />
@@ -58,7 +67,7 @@ export default function Home() {
         <HeroBackground />
         <img src={logoFull} alt="Plasma Care — A Unit of Trivana Ventures LLP" className="home__logo-full" />
         <p className="home__tagline">{t('tagline')}</p>
-        <p className="home__sub">G13 K8 BDA Market Complex, Kalinga Nagar</p>
+        <a href={MAP_LINK} target="_blank" rel="noreferrer" className="home__sub home__sub--link">G13 K8 BDA Market Complex, Kalinga Nagar</a>
         <PulseDivider />
       </header>
 
@@ -122,7 +131,7 @@ export default function Home() {
           </a>
           <div className="contact-row contact-row--static">
             <PinIcon />
-            <span>G13 K8 BDA Market Complex, Kalinga Nagar, Bhubaneswar – 751003</span>
+            <a href={MAP_LINK} target="_blank" rel="noreferrer">G13 K8 BDA Market Complex, Kalinga Nagar, Bhubaneswar – 751003</a>
           </div>
         </div>
         {legalPages.length > 0 && (

@@ -134,6 +134,24 @@
   position: relative;
   z-index: 1;
 }
+.home__sub--link {
+  display: inline-block;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+.home__slow-banner {
+  display: block;
+  background: #FFF6E5;
+  border: 1px solid #F3D98B;
+  color: #6B4E00;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 10px;
+}
 .home__hero .pulse-divider {
   position: relative;
   z-index: 1;
