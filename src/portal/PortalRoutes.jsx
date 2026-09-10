@@ -11,6 +11,7 @@ import B2BShell from './pages/b2b/B2BShell'
 import B2BDashboard from './pages/b2b/B2BDashboard'
 import B2BBulkAdd from './pages/b2b/B2BBulkAdd'
 import B2BHistory from './pages/b2b/B2BHistory'
+import AccountPage from './components/AccountPage'
 import DevPulse from './pages/dev/DevPulse'
 import './pages/portal.css'
 
@@ -51,6 +52,7 @@ export default function PortalRoutes() {
           <Route index element={<B2BDashboard />} />
           <Route path="bulk-add" element={<B2BBulkAdd />} />
           <Route path="history" element={<B2BHistory />} />
+          <Route path="account" element={<AccountPage />} />
         </Route>
 
         {/* Developer-only — separate from the staff panel entirely, not
