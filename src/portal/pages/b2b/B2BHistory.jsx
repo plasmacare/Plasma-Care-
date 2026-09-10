@@ -40,10 +40,10 @@ export default function B2BHistory() {
 
   return (
     <div>
-      <h2 style={{ color: 'var(--navy-950)', marginBottom: 16 }}>Request History</h2>
+      <h2 style={{ color: 'var(--navy-950)', marginBottom: 16 }}>Registration History</h2>
       {error && <p className="login-error">{error}</p>}
       {requests.length === 0 ? (
-        <p style={{ color: 'var(--slate)' }}>No bulk requests yet.</p>
+        <p style={{ color: 'var(--slate)' }}>No registrations yet.</p>
       ) : (
         <div className="b2b-history-list">
           {requests.map((r) => {
@@ -58,7 +58,7 @@ export default function B2BHistory() {
                 >
                   <span>{new Date(r.created_at).toLocaleDateString('en-IN')}</span>
                   <span>{r.patients?.length || 0} patient(s)</span>
-                  <span>Scheduled {r.preferred_date || '—'}</span>
+                  <span>{r.preferred_time ? `Preferred: ${r.preferred_time}` : ''}</span>
                   <span className="b2b-history-card__chevron">{isOpen ? '▲' : '▼'}</span>
                 </button>
 
@@ -68,7 +68,7 @@ export default function B2BHistory() {
                     <div className="b2b-table-wrap">
                       <table className="b2b-table">
                         <thead>
-                          <tr><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Test / Package</th><th>Status</th></tr>
+                          <tr><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Test / Package</th><th>Status</th><th>Report</th></tr>
                         </thead>
                         <tbody>
                           {(r.patients || []).map((p, i) => {
@@ -86,6 +86,11 @@ export default function B2BHistory() {
                                       {STATUS_LABEL[booking.status] || booking.status}
                                     </span>
                                   ) : bookings ? '—' : 'Loading…'}
+                                </td>
+                                <td>
+                                  {booking?.report_url ? (
+                                    <a href={booking.report_url} target="_blank" rel="noreferrer">Download</a>
+                                  ) : '—'}
                                 </td>
                               </tr>
                             )

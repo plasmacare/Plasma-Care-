@@ -13,14 +13,13 @@ export default function B2BBulkAdd() {
   const navigate = useNavigate()
   const [packages, setPackages] = useState([])
   const [tests, setTests] = useState([])
-  const [preferredDate, setPreferredDate] = useState('')
+  const [preferredTime, setPreferredTime] = useState('')
   const [patients, setPatients] = useState([]) // [{ id, name, age, gender, phone, optionKey }]
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const fileInputRef = useRef(null)
 
-  // Draft row for the add-patient boxes
+  // Draft row for the add-patient boxes — one registration at a time.
   const [draft, setDraft] = useState({ name: '', age: '', gender: '', phone: '' })
   const nameInputRef = useRef(null)
 
@@ -33,17 +32,11 @@ export default function B2BBulkAdd() {
   // and individual tests, tagged so we know which table an id belongs to.
   const options = useMemo(
     () => [
-      ...packages.map((p) => ({ key: `pkg:${p.id}`, id: p.id, kind: 'package', label: `${p.name} — ₹${p.price}` })),
-      ...tests.map((t) => ({ key: `test:${t.id}`, id: t.id, kind: 'test', label: `${t.name} — ₹${t.price}` })),
+      ...packages.map((p) => ({ key: `pkg:${p.id}`, id: p.id, kind: 'package', name: p.name, price: p.price })),
+      ...tests.map((t) => ({ key: `test:${t.id}`, id: t.id, kind: 'test', name: t.name, price: t.price })),
     ],
     [packages, tests],
   )
-
-  function findOptionByName(name) {
-    if (!name) return null
-    const needle = name.trim().toLowerCase()
-    return options.find((o) => o.label.toLowerCase().startsWith(needle)) || null
-  }
 
   // Auto-add: fires once name/age/gender are filled AND phone is either
   // left empty (phone is optional) or a full, valid number — never on a
@@ -75,50 +68,16 @@ export default function B2BBulkAdd() {
     setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, optionKey } : p)))
   }
 
-  function handleCsvFile(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const text = String(reader.result || '')
-      const rows = text
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => line.split(',').map((c) => c.trim()))
-        // Skip a header row if the first cell looks like a label, not a name.
-        .filter((cols, i) => !(i === 0 && /^name$/i.test(cols[0] || '')))
-
-      const imported = rows
-        .filter((cols) => cols[0])
-        .map((cols) => {
-          const [name, age, gender, phone, testName] = cols
-          const matched = findOptionByName(testName)
-          return {
-            id: crypto.randomUUID(),
-            name: name || '',
-            age: age || '',
-            gender: gender || '',
-            phone: phone || '',
-            optionKey: matched?.key || '',
-          }
-        })
-
-      setPatients((prev) => [...prev, ...imported])
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-    reader.readAsText(file)
-  }
+  const total = patients.reduce((sum, p) => {
+    const opt = options.find((o) => o.key === p.optionKey)
+    return sum + (opt?.price || 0)
+  }, 0)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (!preferredDate) {
-      setError('Pick a preferred date — it becomes the scheduled date for every booking in this batch.')
-      return
-    }
     if (patients.length === 0) {
-      setError('Add at least one patient below.')
+      setError('Add at least one registration below.')
       return
     }
     const missingTest = patients.find((p) => !p.optionKey)
@@ -138,17 +97,17 @@ export default function B2BBulkAdd() {
           phone: p.phone,
           package_id: opt?.kind === 'package' ? opt.id : null,
           individual_test_id: opt?.kind === 'test' ? opt.id : null,
-          test_label: opt?.label.replace(/ — ₹.*/, '') || '',
+          test_label: opt?.name || '',
         }
       })
 
       await submitBulkRequest({
         b2bAccountId: b2bAccount.id,
-        preferredDate,
+        preferredTime,
         patients: patientPayload,
         notes,
       })
-      logEvent({ type: 'b2b_bulk_request_submitted', source: 'b2b', message: `Bulk request: ${patients.length} patients`, metadata: { patient_count: patients.length } })
+      logEvent({ type: 'b2b_bulk_request_submitted', source: 'b2b', message: `Registration: ${patients.length} patient(s)`, metadata: { patient_count: patients.length } })
       navigate('/portal/b2b/history')
     } catch (err) {
       setError(err.message)
@@ -159,11 +118,11 @@ export default function B2BBulkAdd() {
 
   return (
     <div>
-      <h2 style={{ color: 'var(--navy-950)', marginBottom: 16 }}>Bulk Add Patients</h2>
+      <h2 style={{ color: 'var(--navy-950)', marginBottom: 16 }}>Add Registration</h2>
 
       <div className="b2b-add-box">
         <p className="portal-form__hint" style={{ marginBottom: 8 }}>
-          Fill a patient's details — they're added to the list automatically once all filled in.
+          Add patients one at a time — fill their details below and they're added to the list once all filled in.
         </p>
         <div className="b2b-add-box__stack">
           <input
@@ -198,56 +157,56 @@ export default function B2BBulkAdd() {
         >
           + Add patient
         </button>
-
-        <div className="b2b-add-box__upload">
-          <span>or upload a list:</span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            onChange={handleCsvFile}
-          />
-          <span className="portal-form__hint">
-            CSV columns: Name, Age, Gender, Phone, Test/Package (optional). Export your Excel sheet as CSV first.
-          </span>
-        </div>
       </div>
 
       {patients.length > 0 && (
         <div className="b2b-patient-cards">
-          {patients.map((p) => (
-            <div key={p.id} className="b2b-patient-card">
-              <div className="b2b-patient-card__row">
-                <div><span className="b2b-patient-card__label">Name</span>{p.name}</div>
-                <div><span className="b2b-patient-card__label">Age</span>{p.age}</div>
-                <div><span className="b2b-patient-card__label">Gender</span>{p.gender}</div>
-                <div><span className="b2b-patient-card__label">Phone</span>{p.phone || '—'}</div>
+          {patients.map((p) => {
+            const opt = options.find((o) => o.key === p.optionKey)
+            return (
+              <div key={p.id} className="b2b-patient-card">
+                <div className="b2b-patient-card__row">
+                  <div><span className="b2b-patient-card__label">Name</span>{p.name}</div>
+                  <div><span className="b2b-patient-card__label">Age</span>{p.age}</div>
+                  <div><span className="b2b-patient-card__label">Gender</span>{p.gender}</div>
+                  <div><span className="b2b-patient-card__label">Phone</span>{p.phone || '—'}</div>
+                </div>
+                <TestPackageSearchSelect
+                  tests={tests}
+                  packages={packages}
+                  value={opt?.name || ''}
+                  onSelect={(o) => setPatientOption(p.id, o.key)}
+                  placeholder="Search test/package…"
+                />
+                {opt && <p className="b2b-patient-card__price">₹{opt.price}</p>}
+                <button type="button" className="btn btn--ghost" onClick={() => removePatient(p.id)}>Remove</button>
               </div>
-              <TestPackageSearchSelect
-                tests={tests}
-                packages={packages}
-                value={options.find((o) => o.key === p.optionKey)?.label.replace(/ — ₹.*/, '') || ''}
-                onSelect={(opt) => setPatientOption(p.id, opt.key)}
-                placeholder="Search test/package…"
-              />
-              <button type="button" className="btn btn--ghost" onClick={() => removePatient(p.id)}>Remove</button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="portal-form" style={{ marginTop: 20 }}>
-        <label>Preferred date *</label>
-        <input type="date" required value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)} />
-        <p className="portal-form__hint">This becomes the scheduled date for every booking in this batch.</p>
+        <label>Preferred collection time (optional)</label>
+        <input
+          type="text"
+          placeholder="e.g. mornings before 10 AM"
+          value={preferredTime}
+          onChange={(e) => setPreferredTime(e.target.value)}
+        />
+        <p className="portal-form__hint">Our team will call to confirm the exact date and time.</p>
 
         <label>Notes for staff (optional)</label>
         <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
+        {patients.length > 0 && (
+          <p className="b2b-total">Total: <strong>₹{total}</strong> for {patients.length} patient(s)</p>
+        )}
+
         {error && <p className="login-error">{error}</p>}
 
         <button type="submit" className="btn btn--primary" disabled={submitting}>
-          {submitting ? 'Submitting…' : `Submit batch (${patients.length} patients)`}
+          {submitting ? 'Submitting…' : `Submit registration (${patients.length} patient${patients.length === 1 ? '' : 's'})`}
         </button>
       </form>
     </div>

@@ -20,33 +20,33 @@ export default function B2BDashboard() {
       {error && <p className="login-error">{error}</p>}
 
       <div className="b2b-stats">
-        <div className="b2b-stat"><div className="b2b-stat__value">{total}</div><div className="b2b-stat__label">Total Requests</div></div>
+        <div className="b2b-stat"><div className="b2b-stat__value">{total}</div><div className="b2b-stat__label">Total Registrations</div></div>
         <div className="b2b-stat"><div className="b2b-stat__value">{submitted}</div><div className="b2b-stat__label">Awaiting Staff</div></div>
         <div className="b2b-stat"><div className="b2b-stat__value">{completed}</div><div className="b2b-stat__label">Completed</div></div>
         <div className="b2b-stat"><div className="b2b-stat__value">{patientsCount}</div><div className="b2b-stat__label">Total Patients</div></div>
       </div>
 
       <Link to="/portal/b2b/bulk-add" className="btn btn--primary" style={{ display: 'inline-block', marginBottom: 20 }}>
-        + New Bulk Request
+        + New Registration
       </Link>
 
       <h3 style={{ marginBottom: 10 }}>Recent</h3>
       {requests === null ? (
         <p>Loading…</p>
       ) : requests.length === 0 ? (
-        <p style={{ color: 'var(--slate)' }}>No bulk requests yet.</p>
+        <p style={{ color: 'var(--slate)' }}>No registrations yet.</p>
       ) : (
         <div className="b2b-table-wrap">
           <table className="b2b-table">
             <thead>
-              <tr><th>Date</th><th>Patients</th><th>Preferred Date</th><th>Status</th></tr>
+              <tr><th>Date</th><th>Patients</th><th>Preferred Time</th><th>Status</th></tr>
             </thead>
             <tbody>
               {requests.slice(0, 5).map((r) => (
                 <tr key={r.id}>
                   <td>{new Date(r.created_at).toLocaleDateString('en-IN')}</td>
                   <td>{r.patients?.length || 0}</td>
-                  <td>{r.preferred_date || '—'}</td>
+                  <td>{r.preferred_time || '—'}</td>
                   <td><span className={`badge badge--${r.status}`}>{r.status}</span></td>
                 </tr>
               ))}

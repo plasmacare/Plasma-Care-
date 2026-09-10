@@ -21,10 +21,13 @@ export default function B2BShell() {
           Dashboard
         </NavLink>
         <NavLink to="/portal/b2b/bulk-add" className={({ isActive }) => (isActive ? 'active' : '')}>
-          Bulk Add
+          Registration
         </NavLink>
         <NavLink to="/portal/b2b/history" className={({ isActive }) => (isActive ? 'active' : '')}>
           History
+        </NavLink>
+        <NavLink to="/portal/b2b/account" className={({ isActive }) => (isActive ? 'active' : '')}>
+          Account
         </NavLink>
       </nav>
 
