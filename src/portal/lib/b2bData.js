@@ -19,11 +19,11 @@ export async function fetchMyBulkRequests() {
 // admin "accept" step, since the company was already vetted when their
 // access request was approved. The `b2b_bulk_requests` row itself is
 // kept purely as a batch record for the company's own History page.
-export async function submitBulkRequest({ b2bAccountId, preferredDate, patients, notes }) {
-  if (!preferredDate) {
-    throw new Error('Preferred date is required.')
-  }
-
+//
+// No date is collected from the B2B user — staff call to confirm the
+// actual collection date/time (optionally guided by preferredTime, a
+// free-text hint like "mornings before 10 AM").
+export async function submitBulkRequest({ b2bAccountId, preferredTime, patients, notes }) {
   const { data: account, error: acctErr } = await supabase
     .from('b2b_accounts')
     .select('company_name, phone, address, latitude, longitude')
@@ -40,11 +40,15 @@ export async function submitBulkRequest({ b2bAccountId, preferredDate, patients,
     ...(tests || []).map((t) => [t.id, t.price]),
   ])
 
+  const combinedNotes = [preferredTime ? `Preferred collection time: ${preferredTime}` : null, notes || null]
+    .filter(Boolean)
+    .join(' — ')
+
   const { data: batch, error: batchErr } = await supabase
     .from('b2b_bulk_requests')
     .insert({
       b2b_account_id: b2bAccountId,
-      preferred_date: preferredDate,
+      preferred_time: preferredTime || null,
       patients,
       notes: notes || null,
       status: 'submitted',
@@ -69,14 +73,14 @@ export async function submitBulkRequest({ b2bAccountId, preferredDate, patients,
         selected_packages: selectedPackages,
         selected_tests: selectedTests,
         total_amount: totalAmount,
-        scheduled_date: preferredDate,
+        scheduled_date: null,
         status: 'pending',
         patient_name: patient.name,
         patient_age: patient.age ? Number(patient.age) : null,
         patient_gender: patient.gender ? patient.gender.toLowerCase() : null,
         b2b_bulk_request_id: batch.id,
         b2b_account_id: b2bAccountId,
-        admin_notes: notes || null,
+        admin_notes: combinedNotes || null,
       })
       .select('id')
       .single()
