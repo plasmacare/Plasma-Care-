@@ -66,6 +66,61 @@ depend on it.
 
 ## What's new in this update
 
+**Run these new SQL files once** (Supabase SQL editor):
+`b2b_registration_and_username.sql`, `b2b_bulk_to_bookings.sql` (if not
+already run), `fix_addresses_read_for_staff.sql`, `senior_contact_number.sql`,
+`account_section_and_mou.sql`.
+
+- **"Bulk Order" renamed to "Registration"** everywhere in the B2B
+  panel (nav, dashboard, history, form).
+- **B2B pricing was invisible to the B2B user** — fixed: the picked
+  test/package now shows its price, each registered patient shows
+  theirs, and there's a running total before submitting.
+- **B2B registration is one-at-a-time only now** — the CSV bulk-upload
+  option is gone; add patients one by one (name/age/gender/phone →
+  pick a test → repeat).
+- **B2B date picker removed** — staff call to confirm date and time
+  instead. A new optional "preferred collection time" free-text field
+  replaces it (e.g. "mornings before 10 AM").
+- **B2B "Request Access" form now validates properly** — a valid
+  10-digit Indian phone number is required, and a new required
+  **username** field is checked for availability live as you type,
+  with alternatives suggested if it's taken. The form won't submit
+  until all of this passes. (Login itself is still email-based —
+  username is a business-facing identifier, shown in the new Account
+  section below.)
+- **Fixed: collection agents couldn't see the pickup location** — the
+  `addresses` table only had a read policy for anonymous (customer-site)
+  requests, never for logged-in staff/collectors, so RLS silently
+  returned nothing. B2B jobs now also show "🏢 Store:" instead of a
+  generic pin, and carry a B2B badge.
+- **Collector Emergency panel trimmed** to Police / Ambulance /
+  National Emergency + an admin-configurable "Your Senior" number (set
+  from the Views tab) — Fire and the Women's Helpline were dropped per
+  the requested scope.
+- **New Account section** in every panel (staff/admin and B2B): shows
+  your own details (nothing sensitive), and lets you change your own
+  password — anything else requires contacting admin. Admin can send a
+  password-reset link to any staff or B2B account (same
+  "Resend invite" mechanism B2B already had) without ever seeing or
+  setting the password themselves. B2B accounts also see their MoU
+  document here once admin uploads it (from the B2B Requests tab).
+- **Searchable test/package pickers everywhere** they're chosen from
+  (B2B registration, the lab report builder) instead of a long
+  dropdown or free text.
+- **New `/lite` page** for slow connections — a bare, dependency-light
+  booking form (no animations, no decorative background) that still
+  saves to the database the same way the main flow does. The home page
+  detects a slow connection (where the browser supports it — not
+  universal, notably Safari) and offers a link to it.
+- **Homepage address is now a tappable map link.**
+- Minor visual consistency pass: native `<select>` dropdowns now match
+  the rest of the inputs everywhere (custom chevron instead of the
+  default OS arrow), and the admin panel header now matches the B2B
+  panel's sticky/bordered header style. This wasn't a full redesign —
+  flag anything that still looks off and it can be tightened further.
+
+
 - **B2B bulk-add: phone is now genuinely optional** — filling
   name/age/gender no longer auto-commits a row the moment the phone
   field reaches 6-7 digits (that was an unintended premature trigger).
