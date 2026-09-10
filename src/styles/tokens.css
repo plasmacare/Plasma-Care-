@@ -32,6 +32,22 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Native <select> renders very differently (and plainly) across
+   browsers/OSes — this normalizes it to look like the rest of the
+   inputs everywhere in the app, with a custom chevron instead of the
+   default OS arrow. Any component-specific select rule (e.g. inside
+   .portal-form) still overrides this where it's more specific. */
+select {
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235C6B7A' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  padding-right: 32px;
+}
 html, body { margin: 0; padding: 0; }
 html { min-height: 100dvh; }
 body {
