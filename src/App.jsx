@@ -5,6 +5,7 @@ import PathologyBooking from './pages/PathologyBooking'
 import LegalPage from './pages/LegalPage'
 import PaymentStatus from './pages/PaymentStatus'
 import ReportView from './pages/ReportView'
+import LiteBooking from './pages/LiteBooking'
 import SiteBackground from './components/SiteBackground'
 import Analytics from './components/Analytics'
 import MaintenanceScreen from './components/MaintenanceScreen'
@@ -17,6 +18,7 @@ const PortalRoutes = lazy(() => import('./portal/PortalRoutes'))
 export default function App() {
   const location = useLocation()
   const isPortalRoute = location.pathname.startsWith('/portal')
+  const isLiteRoute = location.pathname.startsWith('/lite')
   const [maintenance, setMaintenance] = useState(null)
 
   useEffect(() => {
@@ -32,16 +34,20 @@ export default function App() {
 
   return (
     <>
-      <SiteBackground />
+      {/* Skip the decorative background and analytics entirely on the
+          lite page — the whole point of it is minimal weight on a slow
+          connection. */}
+      {!isLiteRoute && <SiteBackground />}
       {/* Customer-only: page-view logging + the "site-viewers" Presence
           channel. Must NOT mount on /portal/* — staff/admin/B2B sessions
           aren't customer traffic, and joining the same Presence channel
           twice in one tab (once here, once from the Views tab) throws
           "cannot add presence callbacks after subscribe()". */}
-      {!isPortalRoute && <Analytics />}
+      {!isPortalRoute && !isLiteRoute && <Analytics />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/book/pathology" element={<PathologyBooking />} />
+        <Route path="/lite" element={<LiteBooking />} />
         <Route path="/pages/:slug" element={<LegalPage />} />
         <Route path="/pay/:bookingId" element={<PaymentStatus />} />
         <Route path="/report/:bookingId" element={<ReportView />} />
