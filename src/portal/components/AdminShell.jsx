@@ -14,6 +14,7 @@ import ViewsTab from '../pages/staff/ViewsTab'
 import StaffAccessTab from '../pages/staff/StaffAccessTab'
 import B2BRequestsTab from '../pages/staff/B2BRequestsTab'
 import CollectionsTab from '../pages/staff/CollectionsTab'
+import AccountPage from './AccountPage'
 import AdminNotifications from './AdminNotifications'
 import '../styles/admin.css'
 
@@ -33,9 +34,11 @@ export default function AdminShell() {
 
   // Same login, same panel — the tab list is just filtered by role.
   // Admin always gets everything plus the Access tab to manage others.
-  const tabs = role === 'admin'
+  // "Account" is always available to everyone, regardless of role.
+  const roleTabs = role === 'admin'
     ? [...ALL_TAB_DEFS, { key: 'access', label: 'Access' }]
     : ALL_TAB_DEFS.filter((t) => visibleTabs.includes(t.key))
+  const tabs = [...roleTabs, { key: 'account', label: 'Account' }]
 
   const [tab, setTab] = useState(tabs[0]?.key || 'bookings')
   const seenIds = useRef(new Set())
@@ -117,6 +120,7 @@ export default function AdminShell() {
           {tab === 'access' && role === 'admin' && <StaffAccessTab />}
           {tab === 'b2b-requests' && role === 'admin' && <B2BRequestsTab />}
           {tab === 'collections' && <CollectionsTab />}
+          {tab === 'account' && <AccountPage />}
         </>
       )}
     </div>
