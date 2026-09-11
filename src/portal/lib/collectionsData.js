@@ -41,11 +41,14 @@ export async function fetchMyHistory() {
 }
 
 export async function updateCollectionStatus(bookingId, status) {
-  // Only touches collection_status — the main booking `status` column
-  // has its own check constraint/flow driven by the admin panel, so we
-  // don't dual-write it from here. Admin can flip status to "Sample
-  // Collected" from their own dropdown once this is marked collected.
-  const { error } = await supabase.from('bookings').update({ collection_status: status }).eq('id', bookingId)
+  const fields = { collection_status: status }
+  // Once the collector actually has the sample in hand, the booking's
+  // main status should reflect that too — staff shouldn't have to
+  // separately remember to flip the status dropdown after every pickup.
+  if (status === 'collected') {
+    fields.status = 'sample_collected'
+  }
+  const { error } = await supabase.from('bookings').update(fields).eq('id', bookingId)
   if (error) throw error
 }
 

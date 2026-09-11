@@ -40,7 +40,7 @@ export async function submitBulkRequest({ b2bAccountId, preferredTime, patients,
     ...(tests || []).map((t) => [t.id, t.price]),
   ])
 
-  const combinedNotes = [preferredTime ? `Preferred collection time: ${preferredTime}` : null, notes || null]
+  const combinedNotes = [preferredTime ? `Usual sample collection time: ${preferredTime}` : null, notes || null]
     .filter(Boolean)
     .join(' — ')
 

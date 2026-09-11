@@ -104,6 +104,13 @@ export function PortalAuthProvider({ children }) {
     if (role) await evaluateMfa(role)
   }
 
+  // Re-fetches the current user's own rows — used after they fill in a
+  // missing required field (see RequireCompleteProfile) so the gate
+  // clears without needing a full re-login.
+  async function refreshAccounts() {
+    if (session?.user) await loadAccounts(session.user.id)
+  }
+
   const visibleTabs = role === 'admin' ? ALL_TABS : (staffProfile?.allowed_tabs || [])
 
   const loading =
@@ -122,6 +129,7 @@ export function PortalAuthProvider({ children }) {
         visibleTabs,
         mfaState,
         refreshMfa,
+        refreshAccounts,
         loading,
         login,
         logout,
