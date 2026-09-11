@@ -12,6 +12,7 @@ import B2BDashboard from './pages/b2b/B2BDashboard'
 import B2BBulkAdd from './pages/b2b/B2BBulkAdd'
 import B2BHistory from './pages/b2b/B2BHistory'
 import AccountPage from './components/AccountPage'
+import RequireCompleteProfile from './components/RequireCompleteProfile'
 import DevPulse from './pages/dev/DevPulse'
 import './pages/portal.css'
 
@@ -36,7 +37,9 @@ export default function PortalRoutes() {
           path="staff/*"
           element={
             <PortalGate allow="staff">
-              <AdminShell />
+              <RequireCompleteProfile>
+                <AdminShell />
+              </RequireCompleteProfile>
             </PortalGate>
           }
         />
@@ -45,7 +48,9 @@ export default function PortalRoutes() {
           path="b2b/*"
           element={
             <PortalGate allow="b2b">
-              <B2BShell />
+              <RequireCompleteProfile>
+                <B2BShell />
+              </RequireCompleteProfile>
             </PortalGate>
           }
         >
