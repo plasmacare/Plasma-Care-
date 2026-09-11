@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchPackages, fetchTests } from '../../lib/catalogData'
-import { submitBulkRequest } from '../../lib/b2bData'
+import { submitRegistration } from '../../lib/b2bData'
 import { logEvent } from '../../../lib/telemetry'
 import { usePortalAuth } from '../../lib/portalAuth.jsx'
 import TestPackageSearchSelect from '../../components/TestPackageSearchSelect'
@@ -13,15 +13,19 @@ export default function B2BBulkAdd() {
   const navigate = useNavigate()
   const [packages, setPackages] = useState([])
   const [tests, setTests] = useState([])
-  const [preferredTime, setPreferredTime] = useState('')
-  const [patients, setPatients] = useState([]) // [{ id, name, age, gender, phone, optionKey }]
+
+  const [name, setName] = useState('')
+  const [age, setAge] = useState('')
+  const [gender, setGender] = useState('')
+  const [phone, setPhone] = useState('')
+
+  const [selectedTests, setSelectedTests] = useState([]) // [{ id, optionKey, time }]
+  const [testDraftKey, setTestDraftKey] = useState('')
+  const [testDraftTime, setTestDraftTime] = useState('')
+
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  // Draft row for the add-patient boxes — one registration at a time.
-  const [draft, setDraft] = useState({ name: '', age: '', gender: '', phone: '' })
-  const nameInputRef = useRef(null)
 
   useEffect(() => {
     fetchPackages().then(setPackages).catch(() => {})
@@ -38,76 +42,57 @@ export default function B2BBulkAdd() {
     [packages, tests],
   )
 
-  // Auto-add: fires once name/age/gender are filled AND phone is either
-  // left empty (phone is optional) or a full, valid number — never on a
-  // partial phone number mid-typing. There's also an explicit button
-  // below for anyone who prefers not to rely on the auto-trigger.
-  useEffect(() => {
-    const { name, age, gender, phone } = draft
-    const phoneDigits = phone.trim().replace(/\D/g, '')
-    const phoneOkOrEmpty = phoneDigits.length === 0 || phoneDigits.length === 10
-    if (name.trim() && age.trim() && gender && phoneOkOrEmpty && phoneDigits.length === 10) {
-      commitDraft()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft])
-
-  function commitDraft() {
-    const { name, age, gender, phone } = draft
-    if (!name.trim() || !age.trim() || !gender) return
-    setPatients((prev) => [...prev, { id: crypto.randomUUID(), name: name.trim(), age: age.trim(), gender, phone: phone.trim(), optionKey: '' }])
-    setDraft({ name: '', age: '', gender: '', phone: '' })
-    nameInputRef.current?.focus()
+  function addTest() {
+    if (!testDraftKey || !testDraftTime) return
+    setSelectedTests((prev) => [...prev, { id: crypto.randomUUID(), optionKey: testDraftKey, time: testDraftTime }])
+    setTestDraftKey('')
+    setTestDraftTime('')
   }
 
-  function removePatient(id) {
-    setPatients((prev) => prev.filter((p) => p.id !== id))
+  function removeTest(id) {
+    setSelectedTests((prev) => prev.filter((t) => t.id !== id))
   }
 
-  function setPatientOption(id, optionKey) {
-    setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, optionKey } : p)))
-  }
-
-  const total = patients.reduce((sum, p) => {
-    const opt = options.find((o) => o.key === p.optionKey)
+  const total = selectedTests.reduce((sum, t) => {
+    const opt = options.find((o) => o.key === t.optionKey)
     return sum + (opt?.price || 0)
   }, 0)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (patients.length === 0) {
-      setError('Add at least one registration below.')
+    if (!name.trim() || !age.trim() || !gender) {
+      setError('Fill in name, age and gender.')
       return
     }
-    const missingTest = patients.find((p) => !p.optionKey)
-    if (missingTest) {
-      setError(`Select a test/package for ${missingTest.name} before submitting.`)
+    if (selectedTests.length === 0) {
+      setError('Add at least one test/package with a collection time.')
       return
     }
 
     setSubmitting(true)
     try {
-      const patientPayload = patients.map((p) => {
-        const opt = options.find((o) => o.key === p.optionKey)
+      const testsPayload = selectedTests.map((t) => {
+        const opt = options.find((o) => o.key === t.optionKey)
         return {
-          name: p.name,
-          age: p.age,
-          gender: p.gender,
-          phone: p.phone,
           package_id: opt?.kind === 'package' ? opt.id : null,
           individual_test_id: opt?.kind === 'test' ? opt.id : null,
           test_label: opt?.name || '',
+          price: opt?.price || 0,
+          time: t.time,
         }
       })
 
-      await submitBulkRequest({
+      await submitRegistration({
         b2bAccountId: b2bAccount.id,
-        preferredTime,
-        patients: patientPayload,
+        name: name.trim(),
+        age: age.trim(),
+        gender,
+        phone: phone.trim(),
+        tests: testsPayload,
         notes,
       })
-      logEvent({ type: 'b2b_bulk_request_submitted', source: 'b2b', message: `Registration: ${patients.length} patient(s)`, metadata: { patient_count: patients.length } })
+      logEvent({ type: 'b2b_registration_submitted', source: 'b2b', message: `Registration: ${name}`, metadata: { test_count: testsPayload.length } })
       navigate('/portal/b2b/history')
     } catch (err) {
       setError(err.message)
@@ -121,65 +106,59 @@ export default function B2BBulkAdd() {
       <h2 style={{ color: 'var(--navy-950)', marginBottom: 16 }}>Add Registration</h2>
 
       <div className="b2b-add-box">
-        <p className="portal-form__hint" style={{ marginBottom: 8 }}>
-          Add patients one at a time — fill their details below and they're added to the list once all filled in.
-        </p>
+        <p className="portal-form__hint" style={{ marginBottom: 8 }}>Patient details</p>
         <div className="b2b-add-box__stack">
-          <input
-            ref={nameInputRef}
-            placeholder="Name"
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-          />
-          <input
-            placeholder="Age"
-            inputMode="numeric"
-            value={draft.age}
-            onChange={(e) => setDraft({ ...draft, age: e.target.value })}
-          />
-          <select value={draft.gender} onChange={(e) => setDraft({ ...draft, gender: e.target.value })}>
+          <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <input placeholder="Age" inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} />
+          <select value={gender} onChange={(e) => setGender(e.target.value)}>
             <option value="">Gender</option>
             {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
+          <input placeholder="Phone (optional)" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="b2b-add-box" style={{ marginTop: 12 }}>
+        <p className="portal-form__hint" style={{ marginBottom: 8 }}>
+          Choose a test/package and the time its sample was/will be collected — add as many as needed.
+        </p>
+        <div className="b2b-add-box__stack">
+          <TestPackageSearchSelect
+            tests={tests}
+            packages={packages}
+            value={options.find((o) => o.key === testDraftKey)?.name || ''}
+            onSelect={(o) => setTestDraftKey(o.key)}
+            placeholder="Search test/package…"
+          />
           <input
-            placeholder="Phone (optional)"
-            inputMode="tel"
-            value={draft.phone}
-            onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+            type="time"
+            value={testDraftTime}
+            onChange={(e) => setTestDraftTime(e.target.value)}
           />
         </div>
         <button
           type="button"
           className="btn btn--secondary"
           style={{ marginTop: 8 }}
-          disabled={!draft.name.trim() || !draft.age.trim() || !draft.gender}
-          onClick={commitDraft}
+          disabled={!testDraftKey || !testDraftTime}
+          onClick={addTest}
         >
-          + Add patient
+          + Add test
         </button>
       </div>
 
-      {patients.length > 0 && (
-        <div className="b2b-patient-cards">
-          {patients.map((p) => {
-            const opt = options.find((o) => o.key === p.optionKey)
+      {selectedTests.length > 0 && (
+        <div className="b2b-patient-cards" style={{ marginTop: 16 }}>
+          {selectedTests.map((t) => {
+            const opt = options.find((o) => o.key === t.optionKey)
             return (
-              <div key={p.id} className="b2b-patient-card">
-                <div className="b2b-patient-card__row">
-                  <div><span className="b2b-patient-card__label">Name</span>{p.name}</div>
-                  <div><span className="b2b-patient-card__label">Age</span>{p.age}</div>
-                  <div><span className="b2b-patient-card__label">Gender</span>{p.gender}</div>
-                  <div><span className="b2b-patient-card__label">Phone</span>{p.phone || '—'}</div>
+              <div key={t.id} className="b2b-patient-card">
+                <div className="b2b-patient-card__row" style={{ gridTemplateColumns: '2fr 1fr' }}>
+                  <div><span className="b2b-patient-card__label">Test / Package</span>{opt?.name}</div>
+                  <div><span className="b2b-patient-card__label">Collected at</span>{t.time}</div>
                 </div>
-                <TestPackageSearchSelect
-                  tests={tests}
-                  packages={packages}
-                  value={opt?.name || ''}
-                  onSelect={(o) => setPatientOption(p.id, o.key)}
-                  placeholder="Search test/package…"
-                />
                 {opt && <p className="b2b-patient-card__price">₹{opt.price}</p>}
-                <button type="button" className="btn btn--ghost" onClick={() => removePatient(p.id)}>Remove</button>
+                <button type="button" className="btn btn--ghost" onClick={() => removeTest(t.id)}>Remove</button>
               </div>
             )
           })}
@@ -187,26 +166,17 @@ export default function B2BBulkAdd() {
       )}
 
       <form onSubmit={handleSubmit} className="portal-form" style={{ marginTop: 20 }}>
-        <label>Usual sample collection time (optional)</label>
-        <input
-          type="text"
-          placeholder="e.g. samples are usually collected around 10 AM at our location"
-          value={preferredTime}
-          onChange={(e) => setPreferredTime(e.target.value)}
-        />
-        <p className="portal-form__hint">Helps our team plan the visit — not a fixed slot, we'll still call to confirm.</p>
-
         <label>Notes for staff (optional)</label>
         <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
-        {patients.length > 0 && (
-          <p className="b2b-total">Total: <strong>₹{total}</strong> for {patients.length} patient(s)</p>
+        {selectedTests.length > 0 && (
+          <p className="b2b-total">Final price: <strong>₹{total}</strong></p>
         )}
 
         {error && <p className="login-error">{error}</p>}
 
         <button type="submit" className="btn btn--primary" disabled={submitting}>
-          {submitting ? 'Submitting…' : `Submit registration (${patients.length} patient${patients.length === 1 ? '' : 's'})`}
+          {submitting ? 'Submitting…' : 'Submit registration'}
         </button>
       </form>
     </div>

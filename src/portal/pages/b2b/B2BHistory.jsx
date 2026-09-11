@@ -49,6 +49,8 @@ export default function B2BHistory() {
           {requests.map((r) => {
             const isOpen = expandedId === r.id
             const bookings = bookingsByRequest[r.id]
+            const patient = r.patients?.[0]
+            const booking = bookings?.[0]
             return (
               <div key={r.id} className="b2b-history-card">
                 <button
@@ -57,47 +59,48 @@ export default function B2BHistory() {
                   onClick={() => toggle(r.id)}
                 >
                   <span>{new Date(r.created_at).toLocaleDateString('en-IN')}</span>
-                  <span>{r.patients?.length || 0} patient(s)</span>
-                  <span>{r.preferred_time ? `Usual time: ${r.preferred_time}` : ''}</span>
+                  <span>{patient?.name || '—'}</span>
+                  <span>{patient?.tests?.length || 0} test(s)</span>
                   <span className="b2b-history-card__chevron">{isOpen ? '▲' : '▼'}</span>
                 </button>
 
-                {isOpen && (
+                {isOpen && patient && (
                   <div className="b2b-history-card__details">
+                    <p>
+                      <strong>{patient.name}</strong> — {patient.age} yrs, {patient.gender}
+                      {patient.phone ? ` — ${patient.phone}` : ''}
+                    </p>
                     {r.notes && <p><strong>Notes:</strong> {r.notes}</p>}
                     <div className="b2b-table-wrap">
                       <table className="b2b-table">
                         <thead>
-                          <tr><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Test / Package</th><th>Status</th><th>Report</th></tr>
+                          <tr><th>Test / Package</th><th>Collected at</th><th>Price</th></tr>
                         </thead>
                         <tbody>
-                          {(r.patients || []).map((p, i) => {
-                            const booking = bookings?.find((b) => b.patient_name === p.name)
-                            return (
-                              <tr key={i}>
-                                <td>{p.name}</td>
-                                <td>{p.age}</td>
-                                <td>{p.gender}</td>
-                                <td>{p.phone}</td>
-                                <td>{p.test_label || '—'}</td>
-                                <td>
-                                  {booking ? (
-                                    <span className={`badge badge--${booking.status}`}>
-                                      {STATUS_LABEL[booking.status] || booking.status}
-                                    </span>
-                                  ) : bookings ? '—' : 'Loading…'}
-                                </td>
-                                <td>
-                                  {booking?.report_url ? (
-                                    <a href={booking.report_url} target="_blank" rel="noreferrer">Download</a>
-                                  ) : '—'}
-                                </td>
-                              </tr>
-                            )
-                          })}
+                          {(patient.tests || []).map((t, i) => (
+                            <tr key={i}>
+                              <td>{t.test_label || '—'}</td>
+                              <td>{t.time || '—'}</td>
+                              <td>₹{t.price || 0}</td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>
+                    <p style={{ marginTop: 10 }}>
+                      <strong>Status:</strong>{' '}
+                      {booking ? (
+                        <span className={`badge badge--${booking.status}`}>
+                          {STATUS_LABEL[booking.status] || booking.status}
+                        </span>
+                      ) : bookings ? '—' : 'Loading…'}
+                      {booking?.report_url && (
+                        <>
+                          {' — '}
+                          <a href={booking.report_url} target="_blank" rel="noreferrer">Download report</a>
+                        </>
+                      )}
+                    </p>
                   </div>
                 )}
               </div>
