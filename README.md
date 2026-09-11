@@ -66,6 +66,36 @@ depend on it.
 
 ## What's new in this update
 
+**Run this new SQL file once** (Supabase SQL editor): `profile_completion_gate.sql`.
+If `fix_addresses_read_for_staff.sql` from the last update didn't get
+run yet (some SQL editor sessions were hitting a transient Supabase
+backend error), run that one too — it's what actually lets collection
+staff read location data at all; point 2 below needs both.
+
+- **Collection status now syncs to the booking automatically** —
+  marking a sample collected used to only update the collector's own
+  `collection_status`, leaving the booking's main status stuck until
+  someone remembered to flip it by hand. It now sets the booking to
+  "Sample Collected" itself the moment the collector marks it.
+- **B2B "preferred collection time" reworded** — now framed as "usual
+  sample collection time" (still optional, still just a hint for
+  staff — we still call to confirm).
+- **Fixed: B2B collection jobs missing a location for staff to
+  navigate to.** Root cause: `address` was only ever captured on *new*
+  B2B sign-ups — any B2B account approved before that existed has no
+  address on file, so registrations they submit have nothing for
+  `submitBulkRequest` to attach. New accounts aren't affected; existing
+  ones need to fill it in once (see the next point).
+- **New: required-field gate on login.** If a staff or B2B account is
+  missing something the rest of the app depends on (their name; a B2B
+  account's address), they now have to fill it in before they can use
+  anything else — this is what actually fixes existing B2B accounts
+  from the point above. Only that one field is self-editable; changing
+  anything else (role, access, company details, etc.) still requires
+  admin, enforced by a database trigger — not just the UI — so it
+  can't be bypassed by calling the API directly.
+
+
 **Run these new SQL files once** (Supabase SQL editor):
 `b2b_registration_and_username.sql`, `b2b_bulk_to_bookings.sql` (if not
 already run), `fix_addresses_read_for_staff.sql`, `senior_contact_number.sql`,
