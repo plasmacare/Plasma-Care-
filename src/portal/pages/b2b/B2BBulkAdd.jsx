@@ -187,14 +187,14 @@ export default function B2BBulkAdd() {
       )}
 
       <form onSubmit={handleSubmit} className="portal-form" style={{ marginTop: 20 }}>
-        <label>Preferred collection time (optional)</label>
+        <label>Usual sample collection time (optional)</label>
         <input
           type="text"
-          placeholder="e.g. mornings before 10 AM"
+          placeholder="e.g. samples are usually collected around 10 AM at our location"
           value={preferredTime}
           onChange={(e) => setPreferredTime(e.target.value)}
         />
-        <p className="portal-form__hint">Our team will call to confirm the exact date and time.</p>
+        <p className="portal-form__hint">Helps our team plan the visit — not a fixed slot, we'll still call to confirm.</p>
 
         <label>Notes for staff (optional)</label>
         <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />

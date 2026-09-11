@@ -58,7 +58,7 @@ export default function B2BHistory() {
                 >
                   <span>{new Date(r.created_at).toLocaleDateString('en-IN')}</span>
                   <span>{r.patients?.length || 0} patient(s)</span>
-                  <span>{r.preferred_time ? `Preferred: ${r.preferred_time}` : ''}</span>
+                  <span>{r.preferred_time ? `Usual time: ${r.preferred_time}` : ''}</span>
                   <span className="b2b-history-card__chevron">{isOpen ? '▲' : '▼'}</span>
                 </button>
 
