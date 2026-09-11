@@ -9,21 +9,15 @@ export async function fetchMyBulkRequests() {
   return data || []
 }
 
-// patients: [{ name, age, gender, phone, package_id, individual_test_id, test_label }, ...]
-// Each patient carries their own test/package — a batch can mix
-// different tests per person.
-//
-// This creates real `bookings` rows immediately (one per patient, tagged
-// booking_type='home_collection' so they enter the same collection-staff
-// dispatch flow as any other home-collection booking) — no separate
-// admin "accept" step, since the company was already vetted when their
-// access request was approved. The `b2b_bulk_requests` row itself is
-// kept purely as a batch record for the company's own History page.
-//
-// No date is collected from the B2B user — staff call to confirm the
-// actual collection date/time (optionally guided by preferredTime, a
-// free-text hint like "mornings before 10 AM").
-export async function submitBulkRequest({ b2bAccountId, preferredTime, patients, notes }) {
+// One registration = one patient, one booking, with one or more tests
+// each carrying its own collection time. Creates the real `bookings`
+// row immediately (booking_type='home_collection', so it enters the
+// same collection-staff dispatch flow as any other home-collection
+// booking) — no separate admin "accept" step, since the company was
+// already vetted when their access request was approved. The
+// `b2b_bulk_requests` row is kept purely as a record for the company's
+// own History page.
+export async function submitRegistration({ b2bAccountId, name, age, gender, phone, tests, notes }) {
   const { data: account, error: acctErr } = await supabase
     .from('b2b_accounts')
     .select('company_name, phone, address, latitude, longitude')
@@ -31,25 +25,22 @@ export async function submitBulkRequest({ b2bAccountId, preferredTime, patients,
     .single()
   if (acctErr) throw acctErr
 
-  const [{ data: packages }, { data: tests }] = await Promise.all([
-    supabase.from('packages').select('id, price'),
-    supabase.from('individual_tests').select('id, price'),
-  ])
-  const priceById = new Map([
-    ...(packages || []).map((p) => [p.id, p.price]),
-    ...(tests || []).map((t) => [t.id, t.price]),
-  ])
+  const selectedPackages = tests.filter((t) => t.package_id).map((t) => t.package_id)
+  const selectedTests = tests.filter((t) => t.individual_test_id).map((t) => t.individual_test_id)
+  const totalAmount = tests.reduce((sum, t) => sum + (t.price || 0), 0)
 
-  const combinedNotes = [preferredTime ? `Usual sample collection time: ${preferredTime}` : null, notes || null]
+  const timesNote = tests.map((t) => `${t.test_label} at ${t.time}`).join(', ')
+  const combinedNotes = [timesNote ? `Sample collection times — ${timesNote}` : null, notes || null]
     .filter(Boolean)
     .join(' — ')
+
+  const patientRecord = { name, age, gender, phone, tests }
 
   const { data: batch, error: batchErr } = await supabase
     .from('b2b_bulk_requests')
     .insert({
       b2b_account_id: b2bAccountId,
-      preferred_time: preferredTime || null,
-      patients,
+      patients: [patientRecord],
       notes: notes || null,
       status: 'submitted',
       bookings_created: true,
@@ -58,46 +49,39 @@ export async function submitBulkRequest({ b2bAccountId, preferredTime, patients,
     .single()
   if (batchErr) throw batchErr
 
-  for (const patient of patients) {
-    const selectedPackages = patient.package_id ? [patient.package_id] : []
-    const selectedTests = patient.individual_test_id ? [patient.individual_test_id] : []
-    const priceKey = patient.package_id || patient.individual_test_id
-    const totalAmount = priceKey ? priceById.get(priceKey) || 0 : 0
+  const { data: booking, error: bookingErr } = await supabase
+    .from('bookings')
+    .insert({
+      customer_name: name,
+      customer_phone: phone || account.phone || '',
+      booking_type: 'home_collection',
+      selected_packages: selectedPackages,
+      selected_tests: selectedTests,
+      total_amount: totalAmount,
+      scheduled_date: null,
+      status: 'pending',
+      patient_name: name,
+      patient_age: age ? Number(age) : null,
+      patient_gender: gender ? gender.toLowerCase() : null,
+      b2b_bulk_request_id: batch.id,
+      b2b_account_id: b2bAccountId,
+      admin_notes: combinedNotes || null,
+    })
+    .select('id')
+    .single()
+  if (bookingErr) throw bookingErr
 
-    const { data: booking, error: bookingErr } = await supabase
-      .from('bookings')
-      .insert({
-        customer_name: patient.name,
-        customer_phone: patient.phone || account.phone || '',
-        booking_type: 'home_collection',
-        selected_packages: selectedPackages,
-        selected_tests: selectedTests,
-        total_amount: totalAmount,
-        scheduled_date: null,
-        status: 'pending',
-        patient_name: patient.name,
-        patient_age: patient.age ? Number(patient.age) : null,
-        patient_gender: patient.gender ? patient.gender.toLowerCase() : null,
-        b2b_bulk_request_id: batch.id,
-        b2b_account_id: b2bAccountId,
-        admin_notes: combinedNotes || null,
-      })
-      .select('id')
-      .single()
-    if (bookingErr) throw bookingErr
-
-    if (account.address) {
-      await supabase.from('addresses').insert({
-        booking_id: booking.id,
-        full_address: account.address,
-        latitude: account.latitude,
-        longitude: account.longitude,
-      })
-    }
+  if (account.address) {
+    await supabase.from('addresses').insert({
+      booking_id: booking.id,
+      full_address: account.address,
+      latitude: account.latitude,
+      longitude: account.longitude,
+    })
   }
 }
 
-/** For the B2B company's own History page — live status/report links for the real bookings created from a batch. */
+/** For the B2B company's own History page — live status/report link for the booking created from a registration. */
 export async function fetchBookingsForBulkRequest(bulkRequestId) {
   const { data, error } = await supabase
     .from('bookings')
