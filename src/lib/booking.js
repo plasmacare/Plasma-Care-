@@ -42,6 +42,7 @@ export async function createBooking({
   totalAmount,
   scheduledDate,
   address, // { fullAddress, landmark, latitude, longitude } | null
+  verificationId,
 }) {
   const customerIp = await fetchClientIp()
   // Generated here (not read back from the DB) because the anon role no
@@ -61,6 +62,7 @@ export async function createBooking({
     scheduled_date: scheduledDate,
     customer_ip: customerIp,
     status: 'pending',
+    verification_id: verificationId || null,
   })
 
   if (bookingError) throw bookingError
