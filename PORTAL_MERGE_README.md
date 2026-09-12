@@ -423,3 +423,81 @@ resolve, and did a full production build with zero errors or warnings
 beyond a pre-existing chunk-size notice (from three.js/jspdf, unrelated
 to anything changed here). No other broken function found in this pass
 beyond what's listed above.
+
+## Update — optional collection time, Cloudflare Turnstile, SEO tools
+
+### 1. Collection time is now optional
+B2B registration's per-test time picker no longer blocks adding a test
+or submitting — leave it blank if you don't have it yet.
+
+### 2. Cloudflare Turnstile spam protection
+**Run `supabase/turnstile_spam_protection.sql`** first.
+
+Then **deploy the new edge function** (Dashboard → Edge Functions →
+Deploy a new function → name it exactly `verify-turnstile` → paste
+`supabase/functions/verify-turnstile/index.ts`), and set one secret on
+it: **`TURNSTILE_SECRET_KEY`** = the secret key you gave me (kept
+server-side only — never put this one in frontend code or GitHub
+Actions, only in the edge function's own Secrets panel).
+
+The **site key** goes in the frontend build instead — add a GitHub
+Actions secret named **`VITE_TURNSTILE_SITE_KEY`** with that value (the
+workflow file is already updated to pass it through).
+
+How it actually stops spam (not just a checkbox for show): the customer
+booking form and the B2B "Request Access" form now solve a Turnstile
+challenge, exchange it for a one-time verification id via the edge
+function (which checks it with Cloudflare using the secret key), and
+the database itself refuses the insert without a valid, unused,
+unexpired one — enforced by Postgres RLS, not just hidden by the UI. A
+bot hitting your API directly with the anon key, skipping the widget
+entirely, has no way to get a real verification id.
+
+### 3. SEO tools (Dev Pulse → SEO Tools tab)
+- **Live meta tag audit** — reads your actual deployed page right now
+  and checklists title/description length, canonical tag, Open Graph
+  tags, viewport tag.
+- **Head tag snippet builder** — type a title/description, get the
+  exact HTML to paste into `index.html`'s `<head>`.
+- **sitemap.xml generator** — includes every published legal page
+  automatically; copy into `public/sitemap.xml`.
+- **robots.txt editor** — pre-filled sensible default (blocks
+  `/portal/`, points at your sitemap); copy into `public/robots.txt`.
+
+Worth knowing: since this is a static SPA (no server rendering), the
+snippet/sitemap/robots tools produce **text for you to paste into a
+file and redeploy** — nothing here saves live from the browser, because
+there's no server-side process that could serve different HTML per
+request. That's also why the meta tags matter more here than on a
+typical site: whatever's baked into `index.html` at build time is what
+most crawlers and social-media link previews see.
+
+### 4. Beyond Turnstile — other angles worth knowing about
+- **RLS is still the real foundation** — Turnstile stops *automated
+  spam volume*; it's your `secure_public_booking_access.sql` work
+  (narrow RPC functions, no blanket table access) that stops a person
+  from reading or rewriting data they shouldn't, Turnstile or not. Keep
+  that instinct — any new public-facing feature should get the same
+  "what's the narrowest possible access this needs" review.
+- **Supabase's own rate limits**: Dashboard → Authentication → Rate
+  Limits covers auth endpoints (signups, OTPs); the database/API itself
+  is also subject to Supabase's project-tier connection and request
+  limits, which act as a coarse backstop even without extra setup.
+  Nothing to configure specifically, just worth knowing it's there.
+- **A custom domain proxied through Cloudflare** (rather than the bare
+  `.github.io` address) would add network-level protections Turnstile
+  alone doesn't — Cloudflare's WAF, bot-fight mode, and IP-based rate
+  limiting all sit in front of the request before it even reaches
+  GitHub Pages. Worth considering if spam volume ever becomes a
+  problem Turnstile alone doesn't fully absorb.
+- **A honeypot field** is a cheap, invisible-to-humans extra layer: add
+  a text input hidden with CSS (not `display:none`, real screen-reader-
+  invisible styling) that real users never fill in; reject any
+  submission where it's non-empty. Simple bots that fill every field
+  often get caught by this even before Turnstile runs. Didn't add this
+  now since Turnstile alone is a strong primary defense — flag it if
+  you want it layered on top.
+- **Dev Pulse is your early-warning system** for all of this — a spam
+  wave shows up there as a spike in `booking_created`/
+  `b2b_request_submitted` events before it's a real problem, since
+  every insert already logs through `telemetry.js`.
