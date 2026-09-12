@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import StepTracker from '../components/StepTracker'
 import LocationPicker from '../components/LocationPicker'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import TurnstileWidget from '../components/TurnstileWidget'
+import { getVerificationId } from '../lib/turnstile'
 import { useLanguage } from '../lib/i18n.jsx'
 import {
   fetchPackages, fetchTests, createBooking, savePatientDetails,
@@ -60,6 +62,7 @@ export default function PathologyBooking() {
   const [phone, setPhone] = useState('')
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
   const [bookingId, setBookingId] = useState(null)
   const [prescriptionUploadError, setPrescriptionUploadError] = useState('')
   const [patientName, setPatientName] = useState('')
@@ -143,8 +146,13 @@ export default function PathologyBooking() {
       setFormError('Please enter your name and a 10-digit phone number.')
       return
     }
+    if (!turnstileToken) {
+      setFormError('Please complete the verification checkbox.')
+      return
+    }
     setBusy(true)
     try {
+      const verificationId = await getVerificationId(turnstileToken, 'booking')
       const booking = await createBooking({
         customerName: name,
         customerPhone: phone,
@@ -154,6 +162,7 @@ export default function PathologyBooking() {
         totalAmount: total,
         scheduledDate: formatLocalDate(date),
         address: location,
+        verificationId,
       })
       await savePatientDetails(booking.id, {
         name: patientName,
@@ -281,6 +290,8 @@ export default function PathologyBooking() {
           phone={phone} setPhone={setPhone}
           error={formError}
           t={t}
+          onTurnstileVerify={setTurnstileToken}
+          onTurnstileExpire={() => setTurnstileToken('')}
         />
       )}
 
@@ -738,7 +749,7 @@ function PaymentStep({ info, error, onRetry, bookingId, screenshotUrl, onScreens
   )
 }
 
-function DetailsStep({ name, setName, phone, setPhone, error, t }) {
+function DetailsStep({ name, setName, phone, setPhone, error, t, onTurnstileVerify, onTurnstileExpire }) {
   return (
     <div className="details-step">
       <div className="field">
@@ -750,6 +761,7 @@ function DetailsStep({ name, setName, phone, setPhone, error, t }) {
         <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder={t('phonePlaceholder')} />
       </div>
       <p className="details-step__note">{t('contactNote')}</p>
+      <TurnstileWidget onVerify={onTurnstileVerify} onExpire={onTurnstileExpire} />
       {error && <p className="field-error">{error}</p>}
     </div>
   )
