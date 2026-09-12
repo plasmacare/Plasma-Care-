@@ -29,7 +29,7 @@ export async function submitRegistration({ b2bAccountId, name, age, gender, phon
   const selectedTests = tests.filter((t) => t.individual_test_id).map((t) => t.individual_test_id)
   const totalAmount = tests.reduce((sum, t) => sum + (t.price || 0), 0)
 
-  const timesNote = tests.map((t) => `${t.test_label} at ${t.time}`).join(', ')
+  const timesNote = tests.filter((t) => t.time).map((t) => `${t.test_label} at ${t.time}`).join(', ')
   const combinedNotes = [timesNote ? `Sample collection times — ${timesNote}` : null, notes || null]
     .filter(Boolean)
     .join(' — ')
