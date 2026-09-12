@@ -3,6 +3,7 @@ import { usePortalAuth } from '../../lib/portalAuth.jsx'
 import { fetchRecentLogs, fetchLogCounts, subscribeToLogs } from './devLogs'
 import { fetchMaintenanceSettings } from '../../../lib/maintenance'
 import { supabase } from '../../../lib/supabase'
+import SeoTools from './SeoTools'
 import '../portal.css'
 import './devPulse.css'
 
@@ -10,7 +11,30 @@ const SOURCES = ['customer', 'staff', 'admin', 'b2b', 'system']
 const SEVERITIES = ['error', 'warning', 'info']
 
 export default function DevPulse() {
+  const [subTab, setSubTab] = useState('pulse')
   const { logout } = usePortalAuth()
+
+  return (
+    <div className="dev-pulse">
+      <header className="dev-pulse__header">
+        <div>
+          <h1>Dev Pulse</h1>
+          <p>Live activity &amp; error feed — every layer of the site, one stream.</p>
+        </div>
+        <button className="btn btn--ghost" onClick={logout}>Logout</button>
+      </header>
+
+      <div className="collections-subnav" style={{ marginBottom: 16 }}>
+        <button className={subTab === 'pulse' ? 'active' : ''} onClick={() => setSubTab('pulse')} type="button">Pulse</button>
+        <button className={subTab === 'seo' ? 'active' : ''} onClick={() => setSubTab('seo')} type="button">SEO Tools</button>
+      </div>
+
+      {subTab === 'pulse' ? <PulseView /> : <SeoTools />}
+    </div>
+  )
+}
+
+function PulseView() {
   const [logs, setLogs] = useState(null)
   const [counts, setCounts] = useState(null)
   const [severityFilter, setSeverityFilter] = useState('')
@@ -23,6 +47,7 @@ export default function DevPulse() {
       const [logsData, countsData] = await Promise.all([
         fetchRecentLogs({ severity: severityFilter || undefined, source: sourceFilter || undefined }),
         fetchLogCounts(),
+
       ])
       setLogs(logsData)
       setCounts(countsData)
@@ -57,15 +82,7 @@ export default function DevPulse() {
   }, [logs, search])
 
   return (
-    <div className="dev-pulse">
-      <header className="dev-pulse__header">
-        <div>
-          <h1>Dev Pulse</h1>
-          <p>Live activity &amp; error feed — every layer of the site, one stream.</p>
-        </div>
-        <button className="btn btn--ghost" onClick={logout}>Logout</button>
-      </header>
-
+    <>
       {error && <p className="login-error">{error}</p>}
 
       <MaintenancePanel />
@@ -113,7 +130,7 @@ export default function DevPulse() {
           ))}
         </div>
       )}
-    </div>
+    </>
   )
 }
 
