@@ -43,7 +43,7 @@ export default function B2BBulkAdd() {
   )
 
   function addTest() {
-    if (!testDraftKey || !testDraftTime) return
+    if (!testDraftKey) return
     setSelectedTests((prev) => [...prev, { id: crypto.randomUUID(), optionKey: testDraftKey, time: testDraftTime }])
     setTestDraftKey('')
     setTestDraftTime('')
@@ -66,7 +66,7 @@ export default function B2BBulkAdd() {
       return
     }
     if (selectedTests.length === 0) {
-      setError('Add at least one test/package with a collection time.')
+      setError('Add at least one test/package.')
       return
     }
 
@@ -135,12 +135,13 @@ export default function B2BBulkAdd() {
             value={testDraftTime}
             onChange={(e) => setTestDraftTime(e.target.value)}
           />
+          <p className="portal-form__hint" style={{ marginTop: -4 }}>Collection time is optional.</p>
         </div>
         <button
           type="button"
           className="btn btn--secondary"
           style={{ marginTop: 8 }}
-          disabled={!testDraftKey || !testDraftTime}
+          disabled={!testDraftKey}
           onClick={addTest}
         >
           + Add test
@@ -155,7 +156,7 @@ export default function B2BBulkAdd() {
               <div key={t.id} className="b2b-patient-card">
                 <div className="b2b-patient-card__row" style={{ gridTemplateColumns: '2fr 1fr' }}>
                   <div><span className="b2b-patient-card__label">Test / Package</span>{opt?.name}</div>
-                  <div><span className="b2b-patient-card__label">Collected at</span>{t.time}</div>
+                  <div><span className="b2b-patient-card__label">Collected at</span>{t.time || '—'}</div>
                 </div>
                 {opt && <p className="b2b-patient-card__price">₹{opt.price}</p>}
                 <button type="button" className="btn btn--ghost" onClick={() => removeTest(t.id)}>Remove</button>
