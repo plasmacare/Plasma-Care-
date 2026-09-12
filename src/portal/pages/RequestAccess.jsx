@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { logEvent } from '../../lib/telemetry'
+import { getVerificationId } from '../../lib/turnstile'
+import TurnstileWidget from '../../components/TurnstileWidget'
 import logoIcon from '../assets/logo-icon.png'
 import './portal.css'
 
@@ -19,6 +21,7 @@ export default function RequestAccess() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   // Username availability
   const [usernameStatus, setUsernameStatus] = useState('idle') // idle | checking | available | taken
@@ -108,9 +111,14 @@ export default function RequestAccess() {
       setError('Still checking that username — one moment and try again.')
       return
     }
+    if (!turnstileToken) {
+      setError('Please complete the verification checkbox.')
+      return
+    }
 
     setSubmitting(true)
     try {
+      const verification_id = await getVerificationId(turnstileToken, 'b2b_request')
       const digits = form.phone.replace(/\D/g, '').replace(/^91/, '')
       const { error: err } = await supabase.from('b2b_requests').insert({
         ...form,
@@ -118,6 +126,7 @@ export default function RequestAccess() {
         username: form.username.trim(),
         latitude: location?.latitude ?? null,
         longitude: location?.longitude ?? null,
+        verification_id,
       })
       if (err) throw err
       logEvent({ type: 'b2b_request_submitted', source: 'b2b', message: `New B2B request: ${form.company_name}`, metadata: { email: form.email } })
@@ -231,6 +240,8 @@ export default function RequestAccess() {
             value={form.message}
             onChange={(e) => update('message', e.target.value)}
           />
+
+          <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
           {error && <p className="login-error">{error}</p>}
 
