@@ -1,6 +1,10 @@
 import { useEffect, useRef, useId } from 'react'
 
-const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
+// The site key is meant to be public (it's embedded in every page's
+// source by design, same as any Turnstile integration) — falling back
+// to it directly means booking/request submission works immediately
+// even before the VITE_TURNSTILE_SITE_KEY GitHub secret is set up.
+const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAEwOASZS1rWvM8W0'
 
 let scriptLoadPromise = null
 function loadTurnstileScript() {
