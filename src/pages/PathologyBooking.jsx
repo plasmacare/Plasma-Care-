@@ -195,7 +195,7 @@ export default function PathologyBooking() {
         setStep(STEP.DONE)
       }
     } catch (e) {
-      setFormError('Could not create your booking. Please try again.')
+      setFormError(e?.message || 'Could not create your booking. Please try again.')
     } finally {
       setBusy(false)
     }
