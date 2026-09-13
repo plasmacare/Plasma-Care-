@@ -1,5 +1,12 @@
 import { supabase } from '../../lib/supabase'
 
+function formatLocalDate(d) {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 const ACTIVE_STATUSES = ['assigned', 'accepted', 'en_route', 'arrived']
 const DONE_STATUSES = ['collected', 'declined']
 
@@ -47,6 +54,14 @@ export async function updateCollectionStatus(bookingId, status) {
   // separately remember to flip the status dropdown after every pickup.
   if (status === 'collected') {
     fields.status = 'sample_collected'
+    // Backfills scheduled_date for older B2B bookings created before
+    // registrations started setting it — a booking needs a non-null
+    // date the moment its status leaves "pending", or this update gets
+    // rejected by the database's own check constraint.
+    const { data: existing } = await supabase.from('bookings').select('scheduled_date').eq('id', bookingId).single()
+    if (existing && !existing.scheduled_date) {
+      fields.scheduled_date = formatLocalDate(new Date())
+    }
   }
   const { error } = await supabase.from('bookings').update(fields).eq('id', bookingId)
   if (error) throw error

@@ -1,5 +1,14 @@
 import { supabase } from '../../lib/supabase'
 
+// Same local-date formatting used by the customer booking flow and the
+// admin Bookings tab — avoids a UTC off-by-one near midnight.
+function formatLocalDate(d) {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 export async function fetchMyBulkRequests() {
   const { data, error } = await supabase
     .from('b2b_bulk_requests')
@@ -58,7 +67,14 @@ export async function submitRegistration({ b2bAccountId, name, age, gender, phon
       selected_packages: selectedPackages,
       selected_tests: selectedTests,
       total_amount: totalAmount,
-      scheduled_date: null,
+      // B2B registrations don't collect an overall date (each test has
+      // its own collection time instead) — defaulting to today matches
+      // how these are actually used (walk-in/same-day corporate
+      // collection), and just as importantly, keeps scheduled_date
+      // non-null, which a booking needs the moment its status moves
+      // past "pending" (that's what was causing the
+      // bookings_status_check failure on "Mark sample collected").
+      scheduled_date: formatLocalDate(new Date()),
       status: 'pending',
       patient_name: name,
       patient_age: age ? Number(age) : null,
