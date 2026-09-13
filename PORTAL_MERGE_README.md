@@ -501,3 +501,34 @@ most crawlers and social-media link previews see.
   wave shows up there as a spike in `booking_created`/
   `b2b_request_submitted` events before it's a real problem, since
   every insert already logs through `telemetry.js`.
+
+## Update — two bug fixes
+
+1. **"Mark sample collected" crash on B2B bookings** — real root cause
+   this time (not just the same symptom-patch as before): B2B
+   registrations stopped setting an overall `scheduled_date` once the
+   form moved to per-test times, but a booking needs a non-null date
+   the moment its status leaves "pending" — that's the actual check
+   constraint being violated. Fixed two ways: new B2B registrations now
+   default `scheduled_date` to the day they're submitted, and the
+   collector's "Mark sample collected" action also self-heals any
+   already-existing B2B booking that's still missing one. No SQL to
+   run for this — both are app-code fixes.
+
+2. **Turnstile checkbox not appearing** — it was correctly *not*
+   rendering because `VITE_TURNSTILE_SITE_KEY` wasn't set up as a
+   GitHub secret yet, and the form's "please complete the checkbox"
+   validation still (correctly) demanded it, so booking was stuck.
+   Site keys are meant to be public — every real Turnstile integration
+   ships it in the page source — so it's now baked in directly as a
+   fallback, no secret required for this part specifically. You can
+   still override it via the GitHub secret later if you ever want to
+   swap keys without a code change; it just isn't required anymore.
+
+**Still needed for Turnstile to work end-to-end** (unchanged from
+before, flagging again since it's easy to lose track of): run
+`supabase/turnstile_spam_protection.sql`, deploy the `verify-turnstile`
+edge function, and set its `TURNSTILE_SECRET_KEY` secret. Until all
+three are done, ticking the checkbox will get further than before but
+the actual booking/request insert will still fail at the database
+step — that's expected until that setup is complete, not a new bug.
