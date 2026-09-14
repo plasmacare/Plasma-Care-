@@ -141,8 +141,8 @@ body { font-family: var(--font-body); color: var(--ink); }
 }
 .booking-card.status--pending { border-left-color: #D9A404; }
 .booking-card.status--confirmed { border-left-color: #1E7B4D; }
-.booking-card.status--sample_collected { border-left-color: #2B6CB0; }
-.booking-card.status--report_ready { border-left-color: #6B46C1; }
+.booking-card.status--assigned { border-left-color: #2B6CB0; }
+.booking-card.status--in_progress { border-left-color: #6B46C1; }
 .booking-card.status--completed { border-left-color: #14315C; }
 .booking-card.status--cancelled { border-left-color: #9CA3AF; opacity: 0.7; }
 
@@ -1231,6 +1231,11 @@ body { font-family: var(--font-body); color: var(--ink); }
 .badge--en_route { background: #FFF6E5; color: #8A6D1D; }
 .badge--arrived { background: #F0FBF5; color: #1E7B4D; }
 .badge--collected { background: #E9F7EF; color: #1E7B4D; }
+.badge--pending { background: #FFF6E5; color: #8A6D1D; }
+.badge--confirmed { background: #E9F7EF; color: #1E7B4D; }
+.badge--in_progress { background: #EFE9FB; color: #6B46C1; }
+.badge--completed { background: var(--navy-100); color: var(--navy-800); }
+.badge--cancelled { background: #F1F1F1; color: var(--slate); }
 
 /* ---------- Report builder ---------- */
 .report-builder-toggle {
