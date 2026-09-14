@@ -532,3 +532,53 @@ edge function, and set its `TURNSTILE_SECRET_KEY` secret. Until all
 three are done, ticking the checkbox will get further than before but
 the actual booking/request insert will still fail at the database
 step — that's expected until that setup is complete, not a new bug.
+
+## Update — the real fix, confirmed from the actual constraint definition
+
+Thanks for running that diagnostic query — huge help. The live
+constraint turned out to be:
+
+```
+CHECK (status = ANY (ARRAY['pending','confirmed','assigned','in_progress','completed','cancelled']))
+```
+
+`sample_collected` and `report_ready` were **never valid values** —
+this wasn't just a collection-page bug, it was quietly wrong sitewide
+wherever `status` got set to either of those (which is why my earlier
+scheduled_date guess didn't fix it — that was a real but unrelated
+gap, not the actual cause).
+
+Fixed everywhere this vocabulary was used:
+- `adminData.js` — the `STATUSES` list the admin dropdown offers
+- `Dashboard.jsx` — status labels + the status-colored left border on
+  booking cards
+- `collectionsData.js` — "Mark sample collected" now sets
+  `status: 'in_progress'` (sample in hand, being processed) instead of
+  the invalid `'sample_collected'`
+- `B2BHistory.jsx` and `Account.jsx` (+ their CSS) — status labels and
+  badge colors for the customer/B2B-facing status displays
+
+No SQL to run — this was purely a case of the app not matching a
+constraint that was already there.
+
+**Mark sample collected should now work end-to-end.** The
+scheduled_date backfill from last time is still in there too — it
+wasn't the cause, but it's harmless to keep as a safety net.
+
+## Update — Turnstile "Verification failed" diagnosed too
+
+Your screenshots (deployed function code + secrets list) confirmed the
+edge function and `TURNSTILE_SECRET_KEY` were both set up correctly —
+so the problem was elsewhere. Likely cause: Supabase's edge function
+gateway rejects any request with **no JWT at all** before your
+function code even runs — and the customer/B2B forms that call this
+aren't logged in, so there was no session token being sent. Fixed by
+sending the public anon key as the request's Authorization header
+(it's a valid JWT for this purpose, and it's meant to be public, same
+as everywhere else it's already used in this app).
+
+Also made the error message itself far more specific if anything else
+goes wrong from here — it'll now show the actual HTTP status and
+response text instead of a generic fallback, so if this isn't fully
+fixed, the next screenshot will tell us exactly what's wrong instead
+of needing another round of secret/deployment screenshots.
