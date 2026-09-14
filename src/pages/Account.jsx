@@ -10,8 +10,8 @@ import './Account.css'
 const STATUS_LABEL = {
   pending: 'statusPending',
   confirmed: 'statusConfirmed',
-  sample_collected: 'statusSampleCollected',
-  report_ready: 'statusReportReady',
+  assigned: 'statusAssigned',
+  in_progress: 'statusInProgress',
   completed: 'statusCompleted',
   cancelled: 'statusCancelled',
 }

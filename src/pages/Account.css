@@ -80,4 +80,5 @@
 .badge--cancelled { background: #F1F1F1; color: #8A8A8A; }
 .badge--completed { background: #E4EAF3; color: var(--navy-950); }
 .badge--confirmed { background: #E9F7EF; color: #1E7B4D; }
-.badge--report_ready { background: #F1E9FB; color: #6B46C1; }
+.badge--in_progress { background: #F1E9FB; color: #6B46C1; }
+.badge--assigned { background: #EAF2FF; color: #2B6CB0; }
