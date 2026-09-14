@@ -53,7 +53,13 @@ export async function updateCollectionStatus(bookingId, status) {
   // main status should reflect that too — staff shouldn't have to
   // separately remember to flip the status dropdown after every pickup.
   if (status === 'collected') {
-    fields.status = 'sample_collected'
+    // The database's real bookings_status_check only allows: pending,
+    // confirmed, assigned, in_progress, completed, cancelled — there is
+    // no 'sample_collected' value. 'in_progress' is the correct match
+    // (sample is in hand, now being processed) — this was the actual
+    // cause of the crash here, confirmed by reading the live constraint
+    // definition directly rather than guessing at it again.
+    fields.status = 'in_progress'
     // Backfills scheduled_date for older B2B bookings created before
     // registrations started setting it — a booking needs a non-null
     // date the moment its status leaves "pending", or this update gets

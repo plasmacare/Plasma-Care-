@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase'
 
-export const STATUSES = ['pending', 'confirmed', 'sample_collected', 'report_ready', 'completed', 'cancelled']
+export const STATUSES = ['pending', 'confirmed', 'assigned', 'in_progress', 'completed', 'cancelled']
 
 export async function fetchLookups() {
   const [{ data: packages }, { data: tests }] = await Promise.all([
