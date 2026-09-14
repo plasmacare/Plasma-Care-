@@ -4,8 +4,8 @@ import { fetchMyBulkRequests, fetchBookingsForBulkRequest } from '../../lib/b2bD
 const STATUS_LABEL = {
   pending: 'Pending',
   confirmed: 'Confirmed',
-  sample_collected: 'Sample Collected',
-  report_ready: 'Report Ready',
+  assigned: 'Assigned',
+  in_progress: 'In Progress',
   completed: 'Completed',
   cancelled: 'Cancelled',
 }
