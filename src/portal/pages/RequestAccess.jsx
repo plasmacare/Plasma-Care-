@@ -13,7 +13,7 @@ function slugifyUsername(text) {
 
 export default function RequestAccess() {
   const [form, setForm] = useState({
-    company_name: '', contact_name: '', email: '', phone: '', username: '', gstin: '', address: '', message: '',
+    company_name: '', contact_name: '', email: '', phone: '', username: '', gstin: '', address: '',
   })
   const [location, setLocation] = useState(null) // { latitude, longitude }
   const [locating, setLocating] = useState(false)
@@ -232,14 +232,6 @@ export default function RequestAccess() {
           <p className="portal-form__hint">
             Helps staff navigate directly to your store/office. Allow location access when prompted.
           </p>
-
-          <label>What do you need? (optional)</label>
-          <textarea
-            rows={3}
-            placeholder="e.g. Annual health checkup for 200 employees"
-            value={form.message}
-            onChange={(e) => update('message', e.target.value)}
-          />
 
           <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
 
