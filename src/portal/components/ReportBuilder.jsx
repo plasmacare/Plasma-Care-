@@ -5,7 +5,7 @@ import {
 } from '../lib/reportBuilder'
 import { fetchPackages, fetchTests } from '../lib/catalogData'
 import {
-  listTemplates, findTemplateForTest, renderTemplateToPdfBlob, uploadGeneratedReportToFirebase,
+  listTemplates, findTemplateForTest, renderTemplateToPdfBlob, uploadGeneratedReportPdf,
 } from '../lib/reportTemplates'
 import LabReportTemplate from './LabReportTemplate'
 import TestPackageSearchSelect from './TestPackageSearchSelect'
@@ -38,7 +38,7 @@ export default function ReportBuilder({ booking, onGenerated }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const templateRef = useRef(null)
-  const [firebaseTemplates, setFirebaseTemplates] = useState([])
+  const [formatTemplates, setFormatTemplates] = useState([])
   const [selectedFormatId, setSelectedFormatId] = useState('')
   const [formatBusy, setFormatBusy] = useState(false)
   const [formatError, setFormatError] = useState('')
@@ -54,14 +54,14 @@ export default function ReportBuilder({ booking, onGenerated }) {
     }).catch((err) => setError(err.message))
     generateQrDataUrl(buildReportQrUrl(booking.id)).then(setQrDataUrl).catch(() => {})
     // Pixel-perfect formats are an optional add-on (Report Generation tab) —
-    // if Firebase isn't configured yet, or there simply aren't any formats
+    // if Cloudinary isn't configured yet, or there simply aren't any formats
     // uploaded, the regular generic builder below still works unaffected.
-    listTemplates().then(setFirebaseTemplates).catch(() => {})
+    listTemplates().then(setFormatTemplates).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking.id])
 
   // Formats whose linked test name matches something typed into this report.
-  const matchedFormats = firebaseTemplates.filter((t) =>
+  const matchedFormats = formatTemplates.filter((t) =>
     sections.some((s) => s.tests.some((test) => findTemplateForTest([t], test.name))),
   )
 
@@ -71,7 +71,7 @@ export default function ReportBuilder({ booking, onGenerated }) {
   }, [matchedFormats.length])
 
   async function handleGenerateFromFormat() {
-    const template = firebaseTemplates.find((t) => t.id === selectedFormatId)
+    const template = formatTemplates.find((t) => t.id === selectedFormatId)
     if (!template || !labReport) return
     setFormatError('')
     setFormatBusy(true)
@@ -95,7 +95,7 @@ export default function ReportBuilder({ booking, onGenerated }) {
         })
       })
       const blob = await renderTemplateToPdfBlob(template, values)
-      const url = await uploadGeneratedReportToFirebase(booking.id, blob)
+      const url = await uploadGeneratedReportPdf(booking.id, blob)
       await markReportUploaded(booking.id, labReport.id, url)
       onGenerated?.(url)
     } catch (err) {

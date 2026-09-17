@@ -21,7 +21,7 @@ export default function TemplateFieldMapper({ template, onClose, onSaved }) {
         const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
-        const loadingTask = pdfjsLib.getDocument(template.downloadURL)
+        const loadingTask = pdfjsLib.getDocument(template.storageUrl)
         const pdf = await loadingTask.promise
         const page = await pdf.getPage(1)
         const baseViewport = page.getViewport({ scale: 1 })
@@ -43,7 +43,7 @@ export default function TemplateFieldMapper({ template, onClose, onSaved }) {
     }
     render()
     return () => { cancelled = true }
-  }, [template.downloadURL])
+  }, [template.storageUrl])
 
   function handleCanvasClick(e) {
     const canvas = canvasRef.current
