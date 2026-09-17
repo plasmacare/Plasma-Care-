@@ -1,39 +1,36 @@
-# Report Generation (Firebase) — setup
+# Report Generation (Cloudinary + Supabase) — setup
 
-The rest of the app (auth, bookings, catalog, payments, etc.) is unchanged
-and stays on Supabase. Only the new **Report Generation** admin tab and its
-report-format library live in Firebase project `plasma-care`.
+Everything in the app — auth, bookings, catalog, payments, and now the
+**Report Generation** template library too — stays on Supabase. Only the
+actual PDF files (report formats + generated reports) live on
+**Cloudinary**, so a shared report link never reveals which database the
+app runs on.
 
-## 1. One-time Firebase console setup
+## 1. Run the Supabase migration
 
-1. **Enable Anonymous sign-in**: Firebase Console → Build → Authentication →
-   Sign-in method → enable **Anonymous**.
-   The app is authenticated via Supabase, not Firebase — this anonymous
-   sign-in exists only so Firestore/Storage security rules (which require
-   `request.auth != null`) are satisfied. Real access control (who can
-   reach this tab at all) is Supabase's staff/admin role check.
-2. **Enable Firestore** (Native mode) and **Storage** if not already on.
-3. **Deploy the security rules** in `firebase/firestore.rules` and
-   `firebase/storage.rules` (via the Firebase console's Rules editor, or
-   `firebase deploy --only firestore:rules,storage` with the Firebase CLI).
+In the Supabase SQL editor, run `supabase/report_templates.sql`. It
+creates the `report_templates` table (category, test name, Cloudinary
+URL, and the field-position mapping) with the same admin-only RLS policy
+pattern as the rest of the app.
 
-## 2. Environment variables
+## 2. Cloudinary — already set up
 
-Add these to your local `.env` (already filled in for you — see `.env`)
-and, for the GitHub Pages deploy, as repo secrets under
+- Cloud name: `uvkq2mlt`
+- Unsigned upload preset: `plasma-care-reports`
+
+These are already in `.env`. If you ever need to recreate the preset:
+Cloudinary Dashboard → Settings → Upload → Upload presets → Add upload
+preset → **Signing Mode: Unsigned**.
+
+For the GitHub Pages deploy, add these two as repo secrets under
 **Settings → Secrets and variables → Actions**:
 
 ```
-VITE_FIREBASE_API_KEY
-VITE_FIREBASE_AUTH_DOMAIN
-VITE_FIREBASE_PROJECT_ID
-VITE_FIREBASE_STORAGE_BUCKET
-VITE_FIREBASE_MESSAGING_SENDER_ID
-VITE_FIREBASE_APP_ID
+VITE_CLOUDINARY_CLOUD_NAME
+VITE_CLOUDINARY_UPLOAD_PRESET
 ```
 
-Values are in `.env` already / in the Firebase console under
-Project settings → Your apps → Web app.
+(the workflow already reads them — see `.github/workflows/deploy.yml`)
 
 ## 3. Uploading the report formats
 
@@ -63,10 +60,23 @@ In **Bookings → Generate report**, once a test name in the report matches
 an uploaded format, a **"Pixel-perfect format found"** dropdown appears
 with a **Generate using original format PDF instead** button. This
 overlays the entered values onto the original PDF (via `pdf-lib`) and
-uploads the result to Firebase Storage; the booking and lab report records
-in Supabase are updated with that PDF's URL exactly as the existing
-generic builder does, so the customer-facing report page keeps working
-unchanged.
+uploads the result to Cloudinary; the booking and lab report records in
+Supabase are updated with that PDF's Cloudinary URL exactly as the
+existing generic builder does, so the customer-facing report page keeps
+working unchanged — and the shared link is a Cloudinary URL, not a
+Supabase one.
 
 If no format matches yet, the existing generic report builder (unchanged)
 is still the only option — nothing about the current flow was removed.
+
+## Note on deleting templates
+
+Cloudinary's unsigned upload preset lets the browser upload files without
+exposing a secret key — but that also means the browser can't delete
+files from Cloudinary (deletion requires a signed, server-side request).
+Deleting a template in the admin tab removes its Supabase record (so it
+stops showing up / matching), but the PDF stays on Cloudinary. That's
+harmless — if you want to actually clean up unused files later, do it
+from the Cloudinary Media Library, or add a small signed server-side
+delete endpoint (e.g. a Supabase Edge Function using the Cloudinary API
+secret) if this becomes worth automating.
