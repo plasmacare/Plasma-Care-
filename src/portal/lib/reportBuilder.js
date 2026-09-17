@@ -109,7 +109,7 @@ export async function renderReportToPdfBlob(node) {
 /**
  * Records a generated report's URL against the booking + lab report, no
  * matter which storage it was actually uploaded to (Supabase for the
- * generic builder below, or Firebase for a pixel-perfect format PDF —
+ * generic builder below, or Cloudinary for a pixel-perfect format PDF —
  * see ReportBuilder.jsx). Bookings and lab_reports stay in Supabase
  * either way, since the rest of the app (customer report page, exports)
  * reads from there.

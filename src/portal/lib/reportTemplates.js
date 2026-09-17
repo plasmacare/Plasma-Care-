@@ -1,10 +1,5 @@
-import {
-  collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp,
-} from 'firebase/firestore'
-import {
-  ref, uploadBytes, getDownloadURL, deleteObject,
-} from 'firebase/storage'
-import { getFirebaseDb, getFirebaseStorage, ensureFirebaseSignedIn } from '../../lib/firebase'
+import { supabase } from '../../lib/supabase'
+import { uploadPdfToCloudinary } from './cloudinary'
 
 // Fixed set of categories, matching the "Panel Report Formats" /
 // "Biochemistry Test Report Formats" / etc. folders supplied for the
@@ -21,77 +16,77 @@ export const TEMPLATE_CATEGORIES = [
   'Serology and Immunology',
 ]
 
-const TEMPLATES_COLLECTION = 'report_templates'
-
-function templatesRef() {
-  return collection(getFirebaseDb(), TEMPLATES_COLLECTION)
+function fromRow(row) {
+  return {
+    id: row.id,
+    category: row.category,
+    testName: row.test_name,
+    fileName: row.file_name,
+    storageUrl: row.storage_url,
+    storagePublicId: row.storage_public_id,
+    fields: row.fields || [],
+  }
 }
 
 /** All templates, optionally filtered by category. */
 export async function listTemplates(category) {
-  await ensureFirebaseSignedIn()
-  const q = category
-    ? query(templatesRef(), where('category', '==', category), orderBy('testName'))
-    : query(templatesRef(), orderBy('category'), orderBy('testName'))
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  let query = supabase.from('report_templates').select('*').order('test_name')
+  if (category) query = query.eq('category', category)
+  const { data, error } = await query
+  if (error) throw error
+  return (data || []).map(fromRow)
 }
 
 /**
- * Uploads a reference format PDF to Firebase Storage and creates its
- * Firestore record. `fields` starts empty — positions are added later
- * via the field mapper, once per template.
+ * Uploads a reference format PDF to Cloudinary and creates its Supabase
+ * record. `fields` starts empty — positions are added later via the
+ * field mapper, once per template.
  */
 export async function uploadTemplate({ category, testName, file }) {
-  await ensureFirebaseSignedIn()
-  const storage = getFirebaseStorage()
-  const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_')
-  const path = `report-templates/${category}/${Date.now()}-${safeName}`
-  const fileRef = ref(storage, path)
-  await uploadBytes(fileRef, file, { contentType: 'application/pdf' })
-  const downloadURL = await getDownloadURL(fileRef)
-
-  const docRef = await addDoc(templatesRef(), {
-    category,
-    testName,
-    fileName: file.name,
-    storagePath: path,
-    downloadURL,
-    fields: [],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-  return { id: docRef.id, category, testName, fileName: file.name, storagePath: path, downloadURL, fields: [] }
+  const { url, publicId } = await uploadPdfToCloudinary(file, `plasma-care-reports/formats/${category}`)
+  const { data, error } = await supabase
+    .from('report_templates')
+    .insert({
+      category,
+      test_name: testName,
+      file_name: file.name,
+      storage_url: url,
+      storage_public_id: publicId,
+      fields: [],
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return fromRow(data)
 }
 
 /** Saves the placed field positions for a template (from the field mapper). */
 export async function saveTemplateFields(templateId, fields) {
-  await ensureFirebaseSignedIn()
-  await updateDoc(doc(getFirebaseDb(), TEMPLATES_COLLECTION, templateId), {
-    fields,
-    updatedAt: serverTimestamp(),
-  })
+  const { error } = await supabase
+    .from('report_templates')
+    .update({ fields, updated_at: new Date().toISOString() })
+    .eq('id', templateId)
+  if (error) throw error
 }
 
 /** Renames the test this template is linked to (used to match it during report generation). */
 export async function renameTemplateTest(templateId, testName) {
-  await ensureFirebaseSignedIn()
-  await updateDoc(doc(getFirebaseDb(), TEMPLATES_COLLECTION, templateId), {
-    testName,
-    updatedAt: serverTimestamp(),
-  })
+  const { error } = await supabase
+    .from('report_templates')
+    .update({ test_name: testName, updated_at: new Date().toISOString() })
+    .eq('id', templateId)
+  if (error) throw error
 }
 
+/**
+ * Removes the template's Supabase record. The Cloudinary file itself is
+ * uploaded via an unsigned preset (no secret in the browser), so it
+ * can't be deleted from client-side code — it's simply left orphaned on
+ * Cloudinary (safe to clean up later from the dashboard if needed).
+ */
 export async function deleteTemplate(template) {
-  await ensureFirebaseSignedIn()
-  const storage = getFirebaseStorage()
-  try {
-    await deleteObject(ref(storage, template.storagePath))
-  } catch {
-    // Storage object may already be gone — the Firestore record is the
-    // source of truth for the library, so don't block deletion on this.
-  }
-  await deleteDoc(doc(getFirebaseDb(), TEMPLATES_COLLECTION, template.id))
+  const { error } = await supabase.from('report_templates').delete().eq('id', template.id)
+  if (error) throw error
 }
 
 /**
@@ -116,8 +111,8 @@ export function findTemplateForTest(templates, testName) {
  * PDF was rendered when the position was picked.
  */
 export async function renderTemplateToPdfBlob(template, values) {
-  const [{ PDFDocument, rgb, StandardFonts }] = await Promise.all([import('pdf-lib')])
-  const bytes = await fetch(template.downloadURL).then((r) => r.arrayBuffer())
+  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib')
+  const bytes = await fetch(template.storageUrl).then((r) => r.arrayBuffer())
   const pdfDoc = await PDFDocument.load(bytes)
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const page = pdfDoc.getPage(0)
@@ -143,12 +138,9 @@ export async function renderTemplateToPdfBlob(template, values) {
   return new Blob([outBytes], { type: 'application/pdf' })
 }
 
-/** Uploads a generated (filled-in) report PDF to Firebase Storage and returns its public URL. */
-export async function uploadGeneratedReportToFirebase(bookingId, blob) {
-  await ensureFirebaseSignedIn()
-  const storage = getFirebaseStorage()
-  const path = `generated-reports/${bookingId}/${Date.now()}-report.pdf`
-  const fileRef = ref(storage, path)
-  await uploadBytes(fileRef, blob, { contentType: 'application/pdf' })
-  return getDownloadURL(fileRef)
+/** Uploads a generated (filled-in) report PDF to Cloudinary and returns its public URL. */
+export async function uploadGeneratedReportPdf(bookingId, blob) {
+  const file = new File([blob], 'report.pdf', { type: 'application/pdf' })
+  const { url } = await uploadPdfToCloudinary(file, `plasma-care-reports/generated/${bookingId}`)
+  return url
 }
