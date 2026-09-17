@@ -106,6 +106,27 @@ export async function renderReportToPdfBlob(node) {
   return pdf.output('blob')
 }
 
+/**
+ * Records a generated report's URL against the booking + lab report, no
+ * matter which storage it was actually uploaded to (Supabase for the
+ * generic builder below, or Firebase for a pixel-perfect format PDF —
+ * see ReportBuilder.jsx). Bookings and lab_reports stay in Supabase
+ * either way, since the rest of the app (customer report page, exports)
+ * reads from there.
+ */
+export async function markReportUploaded(bookingId, labReportId, publicUrl) {
+  const { error: bookingError } = await supabase
+    .from('bookings')
+    .update({ report_url: publicUrl, report_status: 'uploaded' })
+    .eq('id', bookingId)
+  if (bookingError) throw bookingError
+
+  const { error: reportError } = await supabase.from('lab_reports').update({ pdf_url: publicUrl }).eq('id', labReportId)
+  if (reportError) throw reportError
+
+  return publicUrl
+}
+
 /** Uploads the generated PDF to the same `reports` bucket the manual "Upload report" flow uses, and marks the booking accordingly. */
 export async function uploadGeneratedReport(bookingId, labReportId, blob) {
   const path = `${bookingId}/${Date.now()}-report.pdf`
@@ -113,15 +134,5 @@ export async function uploadGeneratedReport(bookingId, labReportId, blob) {
   const { error: uploadError } = await supabase.storage.from('reports').upload(path, file, { upsert: true })
   if (uploadError) throw uploadError
   const { data } = supabase.storage.from('reports').getPublicUrl(path)
-
-  const { error: bookingError } = await supabase
-    .from('bookings')
-    .update({ report_url: data.publicUrl, report_status: 'uploaded' })
-    .eq('id', bookingId)
-  if (bookingError) throw bookingError
-
-  const { error: reportError } = await supabase.from('lab_reports').update({ pdf_url: data.publicUrl }).eq('id', labReportId)
-  if (reportError) throw reportError
-
-  return data.publicUrl
+  return markReportUploaded(bookingId, labReportId, data.publicUrl)
 }
