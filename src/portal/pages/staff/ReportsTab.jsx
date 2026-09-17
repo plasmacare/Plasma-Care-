@@ -30,7 +30,7 @@ export default function ReportsTab() {
     try {
       setTemplates(await listTemplates(category))
     } catch (err) {
-      setError(err.message || 'Could not load templates. Check your Firebase configuration.')
+      setError(err.message || 'Could not load templates. Check your Cloudinary configuration.')
     } finally {
       setLoading(false)
     }
@@ -83,8 +83,8 @@ export default function ReportsTab() {
       <p className="portal-form__hint">
         Pixel-perfect report format library. Upload each test's original format PDF, map where patient
         details and result values should print, and the booking-level report builder (Bookings tab) will
-        use the matching format automatically. This library lives in Firebase — the rest of the app stays
-        on Supabase.
+        use the matching format automatically. Format files are stored on Cloudinary; everything else
+        (including this library's data) stays on Supabase.
       </p>
 
       <div className="catalog__switch" style={{ flexWrap: 'wrap' }}>
@@ -126,7 +126,7 @@ export default function ReportsTab() {
               <tr key={t.id}>
                 <td>{t.testName}</td>
                 <td>
-                  <a href={t.downloadURL} target="_blank" rel="noreferrer">{t.fileName}</a>
+                  <a href={t.storageUrl} target="_blank" rel="noreferrer">{t.fileName}</a>
                 </td>
                 <td>{(t.fields || []).length}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
