@@ -14,6 +14,7 @@ import ViewsTab from '../pages/staff/ViewsTab'
 import StaffAccessTab from '../pages/staff/StaffAccessTab'
 import B2BRequestsTab from '../pages/staff/B2BRequestsTab'
 import CollectionsTab from '../pages/staff/CollectionsTab'
+import ReportsTab from '../pages/staff/ReportsTab'
 import AccountPage from './AccountPage'
 import AdminNotifications from './AdminNotifications'
 import '../styles/admin.css'
@@ -27,6 +28,7 @@ const ALL_TAB_DEFS = [
   { key: 'views', label: 'Views' },
   { key: 'b2b-requests', label: 'B2B Requests' },
   { key: 'collections', label: 'Collections' },
+  { key: 'reports', label: 'Report Generation' },
 ]
 
 export default function AdminShell() {
@@ -120,6 +122,7 @@ export default function AdminShell() {
           {tab === 'access' && role === 'admin' && <StaffAccessTab />}
           {tab === 'b2b-requests' && role === 'admin' && <B2BRequestsTab />}
           {tab === 'collections' && <CollectionsTab />}
+          {tab === 'reports' && <ReportsTab />}
           {tab === 'account' && <AccountPage />}
         </>
       )}
