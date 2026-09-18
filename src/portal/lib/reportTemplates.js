@@ -22,10 +22,12 @@ export const TEMPLATE_CATEGORIES = [
 // screen's Patient Details section consistent across every format.
 export const PATIENT_DETAIL_FIELDS = [
   { key: 'patientName', label: 'Patient name' },
+  { key: 'ageSex', label: 'Age / Sex' },
   { key: 'age', label: 'Age' },
   { key: 'sex', label: 'Sex' },
   { key: 'refDoctor', label: 'Referring doctor' },
   { key: 'regNo', label: 'Reg / Sample No.' },
+  { key: 'registeredOn', label: 'Registered on' },
   { key: 'collectedOn', label: 'Sample collected on' },
   { key: 'reportedOn', label: 'Reported on' },
 ]
