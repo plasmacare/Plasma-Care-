@@ -16,6 +16,40 @@ export const TEMPLATE_CATEGORIES = [
   'Serology and Immunology',
 ]
 
+// Field keys treated as "patient/test details" (standard form, always the
+// same shape) rather than "results" (one input per row, driven by however
+// many fields the admin mapped for a given format). Keeps the generator
+// screen's Patient Details section consistent across every format.
+export const PATIENT_DETAIL_FIELDS = [
+  { key: 'patientName', label: 'Patient name' },
+  { key: 'age', label: 'Age' },
+  { key: 'sex', label: 'Sex' },
+  { key: 'refDoctor', label: 'Referring doctor' },
+  { key: 'regNo', label: 'Reg / Sample No.' },
+  { key: 'collectedOn', label: 'Sample collected on' },
+  { key: 'reportedOn', label: 'Reported on' },
+]
+
+const PATIENT_DETAIL_KEYS = new Set(PATIENT_DETAIL_FIELDS.map((f) => f.key))
+
+/**
+ * Splits a mapped template's fields into the standard patient-details set
+ * and the format-specific result values, so the generator screen can
+ * render a fixed "Patient details" form plus one input per result row.
+ */
+export function splitTemplateFields(template) {
+  const all = template.fields || []
+  const patientFields = all.filter((f) => PATIENT_DETAIL_KEYS.has(f.key))
+  const resultFields = all.filter((f) => !PATIENT_DETAIL_KEYS.has(f.key))
+  return { patientFields, resultFields }
+}
+
+/** Turns a field key like "value_sgot" into a readable label "Sgot". */
+export function labelFromKey(key) {
+  return key.replace(/^value_/, '').replace(/^unit_/, '').replace(/[_-]+/g, ' ').trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase()) || key
+}
+
 function fromRow(row) {
   return {
     id: row.id,
