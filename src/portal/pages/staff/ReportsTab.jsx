@@ -3,6 +3,7 @@ import {
   TEMPLATE_CATEGORIES, listTemplates, uploadTemplate, deleteTemplate, renameTemplateTest,
 } from '../../lib/reportTemplates'
 import TemplateFieldMapper from '../../components/TemplateFieldMapper'
+import GenerateReportTab from './GenerateReportTab'
 
 // Turns "sgot-report-format.pdf" into "Sgot" so a bulk upload of the
 // original format files needs the least manual clean-up — the admin can
@@ -17,6 +18,7 @@ function guessTestName(fileName) {
 }
 
 export default function ReportsTab() {
+  const [mode, setMode] = useState('generate') // 'generate' | 'manage'
   const [category, setCategory] = useState(TEMPLATE_CATEGORIES[0])
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -81,12 +83,24 @@ export default function ReportsTab() {
     <div className="catalog">
       <h2>Report Generation</h2>
       <p className="portal-form__hint">
-        Pixel-perfect report format library. Upload each test's original format PDF, map where patient
-        details and result values should print, and the booking-level report builder (Bookings tab) will
-        use the matching format automatically. Format files are stored on Cloudinary; everything else
-        (including this library's data) stays on Supabase.
+        Pick a test, fill in patient and result details, and get a pixel-perfect final report — using the
+        original format PDF library below — ready to share. Format files are stored on Cloudinary;
+        everything else (this library's data, bookings, etc.) stays on Supabase.
       </p>
 
+      <div className="catalog__switch" style={{ marginBottom: 16 }}>
+        <button type="button" className={mode === 'generate' ? 'is-active' : ''} onClick={() => setMode('generate')}>
+          Generate Report
+        </button>
+        <button type="button" className={mode === 'manage' ? 'is-active' : ''} onClick={() => setMode('manage')}>
+          Manage Formats
+        </button>
+      </div>
+
+      {mode === 'generate' ? (
+        <GenerateReportTab />
+      ) : (
+        <div>
       <div className="catalog__switch" style={{ flexWrap: 'wrap' }}>
         {TEMPLATE_CATEGORIES.map((c) => (
           <button key={c} type="button" className={category === c ? 'is-active' : ''} onClick={() => setCategory(c)}>
@@ -151,6 +165,8 @@ export default function ReportsTab() {
             setMappingTemplate(null)
           }}
         />
+      )}
+        </div>
       )}
     </div>
   )
