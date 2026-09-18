@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { saveTemplateFields } from '../lib/reportTemplates'
+import { autoDetectFields } from '../lib/pdfFieldDetect'
 
 const RENDER_WIDTH = 800 // px — canvas is rendered at this width regardless of the PDF's native size
 
@@ -12,6 +13,7 @@ export default function TemplateFieldMapper({ template, onClose, onSaved }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [detecting, setDetecting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -67,6 +69,26 @@ export default function TemplateFieldMapper({ template, onClose, onSaved }) {
     setFields((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  async function handleAutoDetect() {
+    if (fields.length > 0 && !window.confirm('This replaces the currently placed fields with auto-detected ones. Continue?')) {
+      return
+    }
+    setDetecting(true)
+    setError('')
+    try {
+      const detected = await autoDetectFields(template.storageUrl)
+      if (!detected.length) {
+        setError('Could not auto-detect any fields on this format — try placing them manually below.')
+      } else {
+        setFields(detected)
+      }
+    } catch (err) {
+      setError(err.message || 'Auto-detect failed — try placing fields manually below.')
+    } finally {
+      setDetecting(false)
+    }
+  }
+
   async function handleSave() {
     setSaving(true)
     setError('')
@@ -98,6 +120,15 @@ export default function TemplateFieldMapper({ template, onClose, onSaved }) {
           Type a field name below, then click the exact spot on the format where that value should print.
           Add one field per click — repeat for every value this format needs (patient details, plus one
           field per result row for multi-parameter panels).
+        </p>
+
+        <button type="button" className="btn btn--primary" onClick={handleAutoDetect} disabled={detecting} style={{ marginBottom: 12 }}>
+          {detecting ? 'Detecting…' : '✨ Auto-detect fields'}
+        </button>
+        <p className="portal-form__hint">
+          Reads the format's text and places patient-detail + result-row fields automatically (works for
+          the standard layout these formats share). Review the placed dots below, then add or remove any
+          by hand before saving — auto-detect is a head start, not guaranteed to be perfect on every format.
         </p>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
