@@ -19,7 +19,7 @@ export default function GenerateReportTab() {
   const [selectedId, setSelectedId] = useState('')
 
   const [patientValues, setPatientValues] = useState({
-    patientName: '', age: '', sex: '', refDoctor: '', regNo: newRegNo(), collectedOn: '', reportedOn: todayDisplay(),
+    patientName: '', ageSex: '', age: '', sex: '', refDoctor: '', regNo: newRegNo(), registeredOn: '', collectedOn: '', reportedOn: todayDisplay(),
   })
   const [resultValues, setResultValues] = useState({})
 
@@ -148,10 +148,10 @@ export default function GenerateReportTab() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 20 }}>
             {(patientFields.length ? patientFields.map((f) => ({ key: f.key, label: labelFromKey(f.key) })) : [
               { key: 'patientName', label: 'Patient name' },
-              { key: 'age', label: 'Age' },
-              { key: 'sex', label: 'Sex' },
+              { key: 'ageSex', label: 'Age / Sex' },
               { key: 'refDoctor', label: 'Referring doctor' },
               { key: 'regNo', label: 'Reg / Sample No.' },
+              { key: 'registeredOn', label: 'Registered on' },
               { key: 'collectedOn', label: 'Sample collected on' },
               { key: 'reportedOn', label: 'Reported on' },
             ]).map((f) => (
