@@ -107,12 +107,10 @@ export async function renderReportToPdfBlob(node) {
 }
 
 /**
- * Records a generated report's URL against the booking + lab report, no
- * matter which storage it was actually uploaded to (Supabase for the
- * generic builder below, or Cloudinary for a pixel-perfect format PDF —
- * see ReportBuilder.jsx). Bookings and lab_reports stay in Supabase
- * either way, since the rest of the app (customer report page, exports)
- * reads from there.
+ * Records a generated report's URL against the booking + lab report.
+ * Bookings and lab_reports stay in Supabase — only the PDF file itself
+ * is on Cloudinary (see uploadGeneratedReport below) — so the rest of
+ * the app (customer report page, exports) still reads from Supabase.
  */
 export async function markReportUploaded(bookingId, labReportId, publicUrl) {
   const { error: bookingError } = await supabase
@@ -127,12 +125,10 @@ export async function markReportUploaded(bookingId, labReportId, publicUrl) {
   return publicUrl
 }
 
-/** Uploads the generated PDF to the same `reports` bucket the manual "Upload report" flow uses, and marks the booking accordingly. */
+/** Uploads the generated PDF to Cloudinary (so the link shared with the customer never reveals Supabase), and marks the booking accordingly. */
 export async function uploadGeneratedReport(bookingId, labReportId, blob) {
-  const path = `${bookingId}/${Date.now()}-report.pdf`
+  const { uploadPdfToCloudinary } = await import('./cloudinary')
   const file = new File([blob], 'report.pdf', { type: 'application/pdf' })
-  const { error: uploadError } = await supabase.storage.from('reports').upload(path, file, { upsert: true })
-  if (uploadError) throw uploadError
-  const { data } = supabase.storage.from('reports').getPublicUrl(path)
-  return markReportUploaded(bookingId, labReportId, data.publicUrl)
+  const { url } = await uploadPdfToCloudinary(file, `plasma-care-reports/bookings/${bookingId}`)
+  return markReportUploaded(bookingId, labReportId, url)
 }

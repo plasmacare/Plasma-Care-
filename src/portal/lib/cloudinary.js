@@ -1,9 +1,13 @@
 /**
- * PDFs (report format library + generated reports) are stored on
- * Cloudinary using an unsigned upload preset, so they can be uploaded
- * directly from the browser without a server-side secret. Everything
- * else about the report library (which test a format belongs to, field
- * positions, etc.) lives in Supabase — see reportTemplates.js.
+ * Every generated report PDF (from a booking, or from the standalone
+ * Report Generation tab) is uploaded to Cloudinary using an unsigned
+ * upload preset — directly from the browser, no server-side secret
+ * needed — so the link shared with a customer never reveals that the
+ * app runs on Supabase. Report content and the test-parameter catalog
+ * (name/unit/reference per test) live in Supabase — see testPanels.js
+ * and portal/lib/reportBuilder.js. The report's actual design comes
+ * from LabReportTemplate.jsx (Plasma Care's own branding) — nothing
+ * here stores or serves another company's report file.
  */
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
@@ -20,8 +24,8 @@ function ensureConfigured() {
 
 /**
  * Uploads a PDF (File or Blob) to Cloudinary and returns { url, publicId }.
- * `folder` groups files in the Cloudinary media library (e.g. by category
- * for formats, or by booking id for generated reports).
+ * `folder` groups files in the Cloudinary media library (e.g. by booking
+ * id, or by test name for a standalone-generated report).
  */
 export async function uploadPdfToCloudinary(file, folder) {
   ensureConfigured()
@@ -40,12 +44,3 @@ export async function uploadPdfToCloudinary(file, folder) {
   }
   return { url: data.secure_url, publicId: data.public_id }
 }
-
-/**
- * Cloudinary deletion needs a signed request (a secret, which can't live
- * in browser code), so unsigned uploads can't be deleted client-side.
- * Deleting a template here only removes its Supabase record; the file
- * itself is safe to leave orphaned on Cloudinary (or clean up later from
- * the Cloudinary dashboard / a server-side script with the API secret).
- */
-export const CLOUDINARY_DELETE_REQUIRES_SERVER = true
