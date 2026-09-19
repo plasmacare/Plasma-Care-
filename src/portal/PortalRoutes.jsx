@@ -14,6 +14,7 @@ import B2BHistory from './pages/b2b/B2BHistory'
 import AccountPage from './components/AccountPage'
 import RequireCompleteProfile from './components/RequireCompleteProfile'
 import DevPulse from './pages/dev/DevPulse'
+import OfflineBanner from './components/OfflineBanner'
 import './pages/portal.css'
 
 // Mounted at /portal/* from the main App.jsx, behind React.lazy — none
@@ -22,6 +23,7 @@ import './pages/portal.css'
 export default function PortalRoutes() {
   return (
     <PortalAuthProvider>
+      <OfflineBanner />
       <Routes>
         <Route path="login" element={<Login />} />
         <Route path="request-access" element={<RequestAccess />} />
