@@ -20,7 +20,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB')
 }
 
-export default function LabReportTemplate({ booking, doctor, regNo, registeredOn, receivedOn, sections, qrDataUrl }) {
+export default function LabReportTemplate({ booking, doctor, regNo, registeredOn, receivedOn, refDoctor, sections, qrDataUrl }) {
   return (
     <div className="lab-report" id="lab-report-capture">
       <header className="lab-report__header">
@@ -40,7 +40,7 @@ export default function LabReportTemplate({ booking, doctor, regNo, registeredOn
         <div className="lab-report__patient-info">
           <p className="lab-report__patient-name">{booking.patient_gender === 'female' ? 'Ms.' : booking.patient_gender === 'other' ? '' : 'Mr.'} {(booking.patient_name || booking.customer_name || '').toUpperCase()}</p>
           <p><span>Age / Sex</span> : {booking.patient_age || '—'} YRS / {(booking.patient_gender || '?').slice(0, 1).toUpperCase()}</p>
-          <p><span>Referred by</span> : Self</p>
+          <p><span>Referred by</span> : {refDoctor || 'Self'}</p>
           <p><span>Reg. no.</span> : <strong>{regNo}</strong></p>
         </div>
         <div className="lab-report__barcode-block">

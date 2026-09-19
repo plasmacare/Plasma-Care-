@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   fetchDoctors, addDoctor, ensureLabReport, saveLabReportDraft,
-  buildReportQrUrl, generateQrDataUrl, renderReportToPdfBlob, uploadGeneratedReport, markReportUploaded,
+  buildReportQrUrl, generateQrDataUrl, renderReportToPdfBlob, uploadGeneratedReport,
 } from '../lib/reportBuilder'
 import { fetchPackages, fetchTests } from '../lib/catalogData'
-import {
-  listTemplates, findTemplateForTest, renderTemplateToPdfBlob, uploadGeneratedReportPdf,
-} from '../lib/reportTemplates'
 import LabReportTemplate from './LabReportTemplate'
 import TestPackageSearchSelect from './TestPackageSearchSelect'
-
-function slugKey(text) {
-  return (text || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
-}
 
 const FLAGS = ['', 'H', 'L']
 
@@ -38,10 +31,6 @@ export default function ReportBuilder({ booking, onGenerated }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const templateRef = useRef(null)
-  const [formatTemplates, setFormatTemplates] = useState([])
-  const [selectedFormatId, setSelectedFormatId] = useState('')
-  const [formatBusy, setFormatBusy] = useState(false)
-  const [formatError, setFormatError] = useState('')
 
   useEffect(() => {
     fetchDoctors().then(setDoctors).catch(() => {})
@@ -53,57 +42,8 @@ export default function ReportBuilder({ booking, onGenerated }) {
       if (report.sections?.length) setSections(report.sections)
     }).catch((err) => setError(err.message))
     generateQrDataUrl(buildReportQrUrl(booking.id)).then(setQrDataUrl).catch(() => {})
-    // Pixel-perfect formats are an optional add-on (Report Generation tab) —
-    // if Cloudinary isn't configured yet, or there simply aren't any formats
-    // uploaded, the regular generic builder below still works unaffected.
-    listTemplates().then(setFormatTemplates).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking.id])
-
-  // Formats whose linked test name matches something typed into this report.
-  const matchedFormats = formatTemplates.filter((t) =>
-    sections.some((s) => s.tests.some((test) => findTemplateForTest([t], test.name))),
-  )
-
-  useEffect(() => {
-    if (!selectedFormatId && matchedFormats.length) setSelectedFormatId(matchedFormats[0].id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchedFormats.length])
-
-  async function handleGenerateFromFormat() {
-    const template = formatTemplates.find((t) => t.id === selectedFormatId)
-    if (!template || !labReport) return
-    setFormatError('')
-    setFormatBusy(true)
-    try {
-      await saveLabReportDraft(labReport.id, { doctorId, sections })
-      const values = {
-        patientName: booking.patient_name || booking.customer_name || '',
-        age: booking.patient_age || '',
-        sex: booking.patient_gender || '',
-        refDoctor: selectedDoctor?.name || '',
-        regNo: labReport.reg_no || '',
-        sampleId: labReport.reg_no || '',
-        reportedOn: new Date().toLocaleDateString('en-GB'),
-      }
-      sections.forEach((section) => {
-        section.tests.forEach((test, idx) => {
-          if (!test.name) return
-          values[`value_${slugKey(test.name)}`] = test.value
-          values[`unit_${slugKey(test.name)}`] = test.unit
-          values[`value${idx + 1}`] = values[`value${idx + 1}`] ?? test.value
-        })
-      })
-      const blob = await renderTemplateToPdfBlob(template, values)
-      const url = await uploadGeneratedReportPdf(booking.id, blob)
-      await markReportUploaded(booking.id, labReport.id, url)
-      onGenerated?.(url)
-    } catch (err) {
-      setFormatError(err.message || 'Could not generate the pixel-perfect PDF.')
-    } finally {
-      setFormatBusy(false)
-    }
-  }
 
   function updateSection(si, fields) {
     setSections((prev) => prev.map((s, i) => (i === si ? { ...s, ...fields } : s)))
@@ -244,23 +184,6 @@ export default function ReportBuilder({ booking, onGenerated }) {
       <button type="button" className="btn btn--primary btn--block" disabled={busy || !labReport} onClick={handleGenerate}>
         {busy ? 'Generating…' : 'Generate report PDF'}
       </button>
-
-      {matchedFormats.length > 0 && (
-        <div className="report-builder__section" style={{ marginTop: 12 }}>
-          <label className="report-builder__field">
-            Pixel-perfect format found (from Report Generation library)
-            <select value={selectedFormatId} onChange={(e) => setSelectedFormatId(e.target.value)}>
-              {matchedFormats.map((t) => (
-                <option key={t.id} value={t.id}>{t.testName} — {t.fileName}</option>
-              ))}
-            </select>
-          </label>
-          {formatError && <p className="admin-error">{formatError}</p>}
-          <button type="button" className="btn btn--secondary btn--block" disabled={formatBusy || !labReport} onClick={handleGenerateFromFormat}>
-            {formatBusy ? 'Generating…' : 'Generate using original format PDF instead'}
-          </button>
-        </div>
-      )}
 
       {/* Rendered off-screen purely so html2canvas has a real DOM node to capture. */}
       {labReport && (
