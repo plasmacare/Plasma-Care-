@@ -1,82 +1,55 @@
-# Report Generation (Cloudinary + Supabase) — setup
+# Report Generation — setup
 
-Everything in the app — auth, bookings, catalog, payments, and now the
-**Report Generation** template library too — stays on Supabase. Only the
-actual PDF files (report formats + generated reports) live on
-**Cloudinary**, so a shared report link never reveals which database the
-app runs on.
+Pick a test → its parameters (name, unit, reference range) auto-fill from
+a catalog extracted from 100 sample lab report formats → fill in patient
+details and result values → get a final report in **Plasma Care's own
+branded design** (`LabReportTemplate.jsx` — the same template the
+booking-level report builder already used) → share.
+
+Nothing here uploads or reuses another lab's original PDF/logo — the
+design is Plasma Care's own; only the *clinical structure* (which
+parameters a test has, their units and reference ranges) was extracted
+from the sample formats.
 
 ## 1. Run the Supabase migration
 
-In the Supabase SQL editor, run `supabase/report_templates.sql`. It
-creates the `report_templates` table (category, test name, Cloudinary
-URL, and the field-position mapping) with the same admin-only RLS policy
-pattern as the rest of the app.
+In the Supabase SQL editor, run, in order:
+1. `supabase/test_panels.sql` — creates the `test_panels` table
+2. `supabase/test_panels_seed.sql` — loads the 100 extracted test/parameter
+   definitions (Panel, Haematology, Biochemistry, Clinical Pathology,
+   Endocrinology, Microbiology, Serology and Immunology)
 
-## 2. Cloudinary — already set up
+**Not included:** 5 Microbiology "culture & sensitivity" formats (blood,
+pus, sputum, stool, urine) use a completely different report shape
+(organism + antibiotic sensitivity table, not TEST/VALUE/UNIT/REFERENCE)
+and weren't auto-extracted. Add these as their own thing later if needed
+— they don't fit the same catalog shape as the other 100.
 
-- Cloud name: `uvkq2mlt`
-- Unsigned upload preset: `plasma-care-reports`
+## 2. Cloudinary (unchanged)
 
-These are already in `.env`. If you ever need to recreate the preset:
-Cloudinary Dashboard → Settings → Upload → Upload presets → Add upload
-preset → **Signing Mode: Unsigned**.
+Every generated report PDF (booking-level and standalone) uploads to
+Cloudinary — cloud name `uvkq2mlt`, unsigned preset `plasma-care-reports`
+— so the link shared with a customer never reveals Supabase. Already set
+in `.env`; for the GitHub Pages deploy, `VITE_CLOUDINARY_CLOUD_NAME` and
+`VITE_CLOUDINARY_UPLOAD_PRESET` are repo secrets already in place.
 
-For the GitHub Pages deploy, add these two as repo secrets under
-**Settings → Secrets and variables → Actions**:
+## 3. Using it
 
-```
-VITE_CLOUDINARY_CLOUD_NAME
-VITE_CLOUDINARY_UPLOAD_PRESET
-```
+**Admin panel → Report Generation:**
+1. Search/pick a test — parameters, units and reference ranges appear
+   pre-filled (editable if needed; you can also add/remove rows)
+2. Fill in patient details (name, age, sex, referring doctor, reg no.,
+   registered/received on) and each parameter's result value
+3. **Generate report** → **Share** / **Share on WhatsApp** / **Copy link**
 
-(the workflow already reads them — see `.github/workflows/deploy.yml`)
+**Bookings → Generate report** (existing flow) is unchanged — it still
+builds its own sections manually and now also uploads to Cloudinary
+instead of Supabase Storage, for the same link-privacy reason.
 
-## 3. Uploading the report formats
+## 4. Fixing a parameter's reference range
 
-Go to **Admin panel → Report Generation**, pick a category tab (Panel,
-Haematology, Biochemistry, etc.), then **Upload format PDF(s)** — you can
-multi-select every file for that category at once (e.g. everything in
-"Biochemistry Test Report Formats"). Each becomes a template row; the test
-name is guessed from the file name and can be fixed with **Rename**.
-
-## 4. Mapping fields (pixel-perfect placement)
-
-Click **Map fields** on a template. The original PDF renders on screen;
-type a field name (e.g. `patientName`, `value_sgot`) and click the exact
-spot on the page where that value should print. Repeat for every value the
-format needs — patient details plus one field per result row for
-multi-parameter panels (CBC, LFT, Lipid Profile, etc.). Save when done.
-
-Recommended field name conventions (the booking-level report builder fills
-these in automatically when they exist):
-- `patientName`, `age`, `sex`, `refDoctor`, `regNo`, `sampleId`, `reportedOn`
-- `value_<test name, lowercased/underscored>` and `unit_<same>` per result
-  row (e.g. a row named "SGOT" → `value_sgot`, `unit_sgot`)
-
-## 5. Using a format when generating a report
-
-In **Bookings → Generate report**, once a test name in the report matches
-an uploaded format, a **"Pixel-perfect format found"** dropdown appears
-with a **Generate using original format PDF instead** button. This
-overlays the entered values onto the original PDF (via `pdf-lib`) and
-uploads the result to Cloudinary; the booking and lab report records in
-Supabase are updated with that PDF's Cloudinary URL exactly as the
-existing generic builder does, so the customer-facing report page keeps
-working unchanged — and the shared link is a Cloudinary URL, not a
-Supabase one.
-
-If no format matches yet, the existing generic report builder (unchanged)
-is still the only option — nothing about the current flow was removed.
-
-## Note on deleting templates
-
-Cloudinary's unsigned upload preset lets the browser upload files without
-exposing a secret key — but that also means the browser can't delete
-files from Cloudinary (deletion requires a signed, server-side request).
-Deleting a template in the admin tab removes its Supabase record (so it
-stops showing up / matching), but the PDF stays on Cloudinary. That's
-harmless — if you want to actually clean up unused files later, do it
-from the Cloudinary Media Library, or add a small signed server-side
-delete endpoint (e.g. a Supabase Edge Function using the Cloudinary API
-secret) if this becomes worth automating.
+If an extracted reference range looks off for a given test, just fix it
+inline in the Report Generation screen and generate — nothing is
+persisted back to the catalog automatically. To fix the catalog itself
+(so it's right every time), update that test_panels row's `parameters`
+JSON directly in the Supabase table editor.
