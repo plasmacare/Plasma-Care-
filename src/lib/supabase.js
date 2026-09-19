@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { offlineAwareFetch } from './offlineFetch'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -15,4 +16,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Custom fetch so writes made while offline (portal/staff/B2B panels) are
+// queued and retried automatically instead of failing — see
+// offlineFetch.js. Doesn't change behavior at all when online.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { fetch: offlineAwareFetch },
+})
