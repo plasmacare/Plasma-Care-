@@ -15,9 +15,13 @@ from the sample formats.
 
 In the Supabase SQL editor, run, in order:
 1. `supabase/test_panels.sql` — creates the `test_panels` table
-2. `supabase/test_panels_seed.sql` — loads the 100 extracted test/parameter
-   definitions (Panel, Haematology, Biochemistry, Clinical Pathology,
-   Endocrinology, Microbiology, Serology and Immunology)
+2. `supabase/seeds/part_01.sql` through `part_10.sql` — loads the 100
+   extracted test/parameter definitions (Panel, Haematology,
+   Biochemistry, Clinical Pathology, Endocrinology, Microbiology,
+   Serology and Immunology), 10 tests per file. Run them one at a time
+   (paste the whole file, press Run, move to the next) — split into
+   small chunks specifically so a mobile browser's paste doesn't
+   truncate a giant single file.
 
 **Not included:** 5 Microbiology "culture & sensitivity" formats (blood,
 pus, sputum, stool, urine) use a completely different report shape
