@@ -1,8 +1,18 @@
 /* Fixed pixel width matching an A4 page at ~96dpi-ish scale (794px is
    A4 @ 96dpi; we use a slightly wider canvas for crisper html2canvas
-   output, then jsPDF fits it to an A4 page proportionally). */
+   output, then jsPDF fits it to an A4 page proportionally).
+   min-height matches one A4 page's height at this same 900px width
+   (297/210 aspect ratio), as a flex column with the footer pinned via
+   margin-top: auto — so a short report's footer sits at the bottom of
+   the printed page instead of right after a small amount of content,
+   leaving blank space below it. For a report long enough to span
+   multiple pages, real content height simply exceeds this min-height
+   and the layout behaves as before. */
 .lab-report {
   width: 900px;
+  min-height: 1273px;
+  display: flex;
+  flex-direction: column;
   background: #fff;
   color: var(--ink);
   font-family: var(--font-body);
@@ -225,6 +235,7 @@
 
 /* ---------- Footer ---------- */
 .lab-report__footer {
+  margin-top: auto; /* pins to the bottom of the flex column — see .lab-report */
   display: flex;
   background: linear-gradient(90deg, var(--navy-950) 0%, var(--navy-950) 60%, var(--red-600) 100%);
   padding: 14px 20px;
