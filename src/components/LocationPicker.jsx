@@ -18,7 +18,44 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
-const DEFAULT_CENTER = { lat: 20.2961, lng: 85.8245 } // Bhubaneswar fallback
+const DEFAULT_CENTER = { lat: 20.2961, lng: 85.8245 } // Bhubaneswar
+
+/**
+ * Home collection service area = the full BDA (Bhubaneswar Development
+ * Authority) planning jurisdiction — Bhubaneswar city plus the
+ * surrounding revenue villages/blocks BDA plans for (~1,110 sq km per
+ * BDA/BSCL's own published figures), not just the much smaller BMC city
+ * limits (~161 sq km).
+ *
+ * There's no exact boundary *polygon* wired in here — BDA's own GIS
+ * server (bhubaneswarone.in/arcgis/.../BDA Planning Zones) blocks
+ * automated fetching (robots.txt), so the precise irregular outline
+ * isn't available to check against. What IS reliable is that same
+ * layer's published bounding-box EXTENT (in Web Mercator / EPSG:3857,
+ * from the ArcGIS REST service metadata), which has been converted to
+ * lat/lng below and padded by ~1km on every side (the requested
+ * "extend up to 1km past the border" margin).
+ *
+ * This is a bounding RECTANGLE, not the true irregular BDA boundary —
+ * so a small number of points just outside the real border but inside
+ * this rectangle's far corners could pass when they technically
+ * shouldn't. If BDA ever publishes a fetchable boundary polygon (or
+ * you can export one from their portal manually), swap this for a real
+ * point-in-polygon check for full accuracy.
+ */
+const SERVICE_AREA_BOUNDS = {
+  latMin: 20.129 - 0.009, // ~1km buffer
+  latMax: 20.412 + 0.009,
+  lngMin: 85.590 - 0.0096,
+  lngMax: 85.905 + 0.0096,
+}
+
+function isWithinServiceArea(lat, lng) {
+  return (
+    lat >= SERVICE_AREA_BOUNDS.latMin && lat <= SERVICE_AREA_BOUNDS.latMax &&
+    lng >= SERVICE_AREA_BOUNDS.lngMin && lng <= SERVICE_AREA_BOUNDS.lngMax
+  )
+}
 
 export default function LocationPicker({ onConfirm }) {
   const { t } = useLanguage()
@@ -149,8 +186,14 @@ export default function LocationPicker({ onConfirm }) {
       setError('Please select a location on the map first.')
       return
     }
+    if (!isWithinServiceArea(coords.lat, coords.lng)) {
+      setError('Home collection is currently available only within the Bhubaneswar area. Please choose a location closer to Bhubaneswar.')
+      return
+    }
     onConfirm({ fullAddress: address, landmark, latitude: coords.lat, longitude: coords.lng })
   }
+
+  const outOfArea = coords && !isWithinServiceArea(coords.lat, coords.lng)
 
   return (
     <div className="location-picker">
@@ -211,9 +254,15 @@ export default function LocationPicker({ onConfirm }) {
         </label>
       </div>
 
+      {outOfArea && (
+        <p className="location-picker__error">
+          This location looks outside our Bhubaneswar service area — home collection isn't available here yet. Please pick a spot closer to Bhubaneswar.
+        </p>
+      )}
+
       {error && <p className="location-picker__error">{error}</p>}
 
-      <button className="btn btn--primary btn--block" onClick={confirm} type="button">
+      <button className="btn btn--primary btn--block" onClick={confirm} type="button" disabled={outOfArea}>
         {t('confirmLocation')}
       </button>
     </div>
