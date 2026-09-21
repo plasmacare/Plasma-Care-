@@ -32,7 +32,7 @@ const ALL_TAB_DEFS = [
 ]
 
 export default function AdminShell() {
-  const { logout, role, visibleTabs, staffProfile } = usePortalAuth()
+  const { role, visibleTabs, staffProfile } = usePortalAuth()
 
   // Same login, same panel — the tab list is just filtered by role.
   // Admin always gets everything plus the Access tab to manage others.
@@ -99,7 +99,6 @@ export default function AdminShell() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <AdminNotifications />
-          <button className="btn btn--ghost" onClick={logout}>Logout</button>
         </div>
       </header>
 

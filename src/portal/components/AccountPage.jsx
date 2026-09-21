@@ -9,7 +9,7 @@ const TAB_LABELS = {
 }
 
 export default function AccountPage() {
-  const { accountType, role, session, staffProfile, b2bAccount, visibleTabs } = usePortalAuth()
+  const { accountType, role, session, staffProfile, b2bAccount, visibleTabs, logout } = usePortalAuth()
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [saving, setSaving] = useState(false)
@@ -101,6 +101,12 @@ export default function AccountPage() {
             {saving ? 'Saving…' : 'Update password'}
           </button>
         </form>
+      </div>
+
+      <div className="account-card">
+        <h3>Log out</h3>
+        <p className="portal-form__hint" style={{ marginBottom: 12 }}>Sign out of this account on this device.</p>
+        <button type="button" className="btn btn--ghost" onClick={logout}>Logout</button>
       </div>
     </div>
   )
