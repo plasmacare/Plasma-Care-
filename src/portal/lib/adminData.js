@@ -72,11 +72,15 @@ export async function fetchCollectorsWithLoad() {
     .sort((a, b) => a.openJobs - b.openJobs)
 }
 
-/** Assigns (or re-assigns) a collector to a home-collection booking. */
-export async function assignCollector(bookingId, collectorId) {
+/** Assigns (or re-assigns) a collector to a home-collection booking. `assignedByLabel` records which staff member made the assignment (cleared automatically on unassign). */
+export async function assignCollector(bookingId, collectorId, assignedByLabel) {
   const { error } = await supabase
     .from('bookings')
-    .update({ assigned_collector_id: collectorId || null, collection_status: collectorId ? 'assigned' : 'unassigned' })
+    .update({
+      assigned_collector_id: collectorId || null,
+      collection_status: collectorId ? 'assigned' : 'unassigned',
+      assigned_collector_by: collectorId ? (assignedByLabel || null) : null,
+    })
     .eq('id', bookingId)
   if (error) throw error
 }
