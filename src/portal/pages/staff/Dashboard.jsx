@@ -12,6 +12,7 @@ import {
   fetchPaymentSettings, createRazorpayLink, savePaymentRequest, markPaymentReceived, computeRequiredAmount,
 } from '../../lib/payments'
 import { logEvent } from '../../../lib/telemetry'
+import { usePortalAuth } from '../../lib/portalAuth'
 
 function formatLocalDate(d) {
   const y = d.getFullYear()
@@ -45,6 +46,7 @@ const CALL_STATUS_LABEL = {
 }
 
 export default function Dashboard() {
+  const { staffProfile } = usePortalAuth()
   const [lookups, setLookups] = useState({ packagesById: {}, testsById: {}, slotsById: {} })
   const [paymentSettings, setPaymentSettings] = useState(null)
   const [bookings, setBookings] = useState([])
@@ -127,9 +129,14 @@ export default function Dashboard() {
 
   async function handleCollectorChange(booking, collectorId) {
     const collector = collectors.find((c) => c.id === collectorId)
-    patch(booking.id, { assigned_collector_id: collectorId || null, collection_status: collectorId ? 'assigned' : 'unassigned' })
+    const assignedByLabel = staffProfile?.full_name || staffProfile?.email || null
+    patch(booking.id, {
+      assigned_collector_id: collectorId || null,
+      collection_status: collectorId ? 'assigned' : 'unassigned',
+      assigned_collector_by: collectorId ? assignedByLabel : null,
+    })
     try {
-      await assignCollector(booking.id, collectorId)
+      await assignCollector(booking.id, collectorId, assignedByLabel)
 
       // B2B batches: assigning a collector on one of the company's
       // bookings applies to every other still-unassigned booking from
@@ -143,8 +150,8 @@ export default function Dashboard() {
           .filter((b) => b.id !== booking.id && b.b2b_account_id === booking.b2b_account_id && !b.assigned_collector_id)
           .map((b) => b.id)
         for (const id of siblingIds) {
-          patch(id, { assigned_collector_id: collectorId, collection_status: 'assigned' })
-          await assignCollector(id, collectorId)
+          patch(id, { assigned_collector_id: collectorId, collection_status: 'assigned', assigned_collector_by: assignedByLabel })
+          await assignCollector(id, collectorId, assignedByLabel)
         }
       }
 
@@ -453,6 +460,9 @@ function BookingCard({
                     </option>
                   ))}
                 </select>
+                {booking.assigned_collector_id && booking.assigned_collector_by && (
+                  <span className="portal-form__hint">Assigned by {booking.assigned_collector_by}</span>
+                )}
               </label>
             ) : (
               <label>
