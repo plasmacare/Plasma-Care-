@@ -4,7 +4,7 @@ import logoIcon from '../../assets/logo-icon.png'
 import '../portal.css'
 
 export default function B2BShell() {
-  const { b2bAccount, logout } = usePortalAuth()
+  const { b2bAccount } = usePortalAuth()
 
   return (
     <div className="b2b">
@@ -13,7 +13,6 @@ export default function B2BShell() {
           <img src={logoIcon} alt="" />
           <span>{b2bAccount?.company_name || 'B2B Partner'}</span>
         </div>
-        <button className="btn btn--ghost" onClick={logout}>Logout</button>
       </div>
 
       <nav className="b2b-nav">
