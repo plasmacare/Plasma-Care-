@@ -47,5 +47,5 @@ export default defineConfig({
       },
     }),
   ],
-  base: '/Plasma-Care-/',
+  base: '/',
 })
