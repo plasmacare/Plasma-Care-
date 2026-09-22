@@ -13,6 +13,9 @@ export default function B2BShell() {
           <img src={logoIcon} alt="" />
           <span>{b2bAccount?.company_name || 'B2B Partner'}</span>
         </div>
+        <NavLink to="/portal/b2b/account" className={({ isActive }) => (isActive ? 'b2b-header__account active' : 'b2b-header__account')}>
+          👤 Account
+        </NavLink>
       </div>
 
       <nav className="b2b-nav">
@@ -24,9 +27,6 @@ export default function B2BShell() {
         </NavLink>
         <NavLink to="/portal/b2b/history" className={({ isActive }) => (isActive ? 'active' : '')}>
           History
-        </NavLink>
-        <NavLink to="/portal/b2b/account" className={({ isActive }) => (isActive ? 'active' : '')}>
-          Account
         </NavLink>
       </nav>
 
