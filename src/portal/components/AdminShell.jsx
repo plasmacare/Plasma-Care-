@@ -17,6 +17,7 @@ import CollectionsTab from '../pages/staff/CollectionsTab'
 import ReportsTab from '../pages/staff/ReportsTab'
 import AccountPage from './AccountPage'
 import AdminNotifications from './AdminNotifications'
+import FeatureTicker from './FeatureTicker'
 import '../styles/admin.css'
 
 const ALL_TAB_DEFS = [
@@ -40,7 +41,7 @@ export default function AdminShell() {
   const roleTabs = role === 'admin'
     ? [...ALL_TAB_DEFS, { key: 'access', label: 'Access' }]
     : ALL_TAB_DEFS.filter((t) => visibleTabs.includes(t.key))
-  const tabs = [...roleTabs, { key: 'account', label: 'Account' }]
+  const tabs = roleTabs
 
   const [tab, setTab] = useState(tabs[0]?.key || 'bookings')
   const seenIds = useRef(new Set())
@@ -99,19 +100,24 @@ export default function AdminShell() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <AdminNotifications />
+          <button type="button" className="admin-notifications__trigger" onClick={() => setTab('account')}>
+            👤 Account
+          </button>
         </div>
       </header>
 
+      <FeatureTicker />
       <NotificationBanner />
 
-      {tabs.length === 0 ? (
+      {tabs.length === 0 && tab !== 'account' ? (
         <p style={{ padding: 24, color: '#666' }}>
           No tabs assigned to your account yet. Ask an admin to grant access.
         </p>
       ) : (
         <>
-          <Tabs tabs={tabs} active={tab} onChange={setTab} />
+          {tabs.length > 0 && <Tabs tabs={tabs} active={tab} onChange={setTab} />}
 
+          {tab === 'account' && <AccountPage />}
           {tab === 'bookings' && <Dashboard />}
           {tab === 'catalog' && <CatalogTab />}
           {tab === 'pages' && <PagesTab />}
@@ -122,7 +128,6 @@ export default function AdminShell() {
           {tab === 'b2b-requests' && role === 'admin' && <B2BRequestsTab />}
           {tab === 'collections' && <CollectionsTab />}
           {tab === 'reports' && <ReportsTab />}
-          {tab === 'account' && <AccountPage />}
         </>
       )}
     </div>
