@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   fetchAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement, setActiveAnnouncement,
-  uploadAnnouncementPoster,
+  uploadAnnouncementPoster, fetchActiveFeatureAnnouncements, addFeatureAnnouncement, deleteFeatureAnnouncement,
 } from '../../lib/contentAdmin'
 
 export default function AnnouncementsTab() {
@@ -16,6 +16,42 @@ export default function AnnouncementsTab() {
   const [posterPreview, setPosterPreview] = useState('')
   const [uploading, setUploading] = useState(false)
 
+  const [featureItems, setFeatureItems] = useState([])
+  const [featureMessage, setFeatureMessage] = useState('')
+  const [featureBusy, setFeatureBusy] = useState(false)
+
+  async function loadFeatureItems() {
+    try {
+      setFeatureItems(await fetchActiveFeatureAnnouncements())
+    } catch {
+      // non-critical — the main announcements list below still works
+    }
+  }
+
+  async function handleAddFeature(e) {
+    e.preventDefault()
+    if (!featureMessage.trim()) return
+    setFeatureBusy(true)
+    try {
+      await addFeatureAnnouncement(featureMessage.trim())
+      setFeatureMessage('')
+      loadFeatureItems()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setFeatureBusy(false)
+    }
+  }
+
+  async function handleDeleteFeature(id) {
+    try {
+      await deleteFeatureAnnouncement(id)
+      loadFeatureItems()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   async function load() {
     setLoading(true)
     try {
@@ -26,7 +62,7 @@ export default function AnnouncementsTab() {
       setLoading(false)
     }
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); loadFeatureItems() }, [])
 
   function handlePosterChange(file) {
     if (!file) return
@@ -88,6 +124,34 @@ export default function AnnouncementsTab() {
 
   return (
     <div className="announcements-tab">
+      <div className="slots-form-card">
+        <h3>New feature ticker (staff/admin panel only)</h3>
+        <p className="slots-form-card__hint">
+          For a new feature shipping on the site (not a bug fix) — shows as a scrolling line at the top of
+          the staff/admin panel for 24 hours, then disappears on its own. Doesn't show to customers.
+        </p>
+        <form className="announcements-tab__form" onSubmit={handleAddFeature}>
+          <input
+            placeholder="e.g. New: Report Generation tab can now auto-fill test parameters"
+            value={featureMessage}
+            onChange={(e) => setFeatureMessage(e.target.value)}
+          />
+          <button type="submit" className="btn btn--primary btn--block" disabled={featureBusy}>
+            {featureBusy ? 'Posting…' : 'Post to ticker'}
+          </button>
+        </form>
+        {featureItems.length > 0 && (
+          <ul style={{ listStyle: 'none', padding: 0, marginTop: 12 }}>
+            {featureItems.map((f) => (
+              <li key={f.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: '1px solid #eee' }}>
+                <span>{f.message}</span>
+                <button type="button" className="btn btn--ghost" onClick={() => handleDeleteFeature(f.id)}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="slots-form-card">
         <h3>New announcement</h3>
         <p className="slots-form-card__hint">
