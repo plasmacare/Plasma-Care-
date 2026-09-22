@@ -50,3 +50,23 @@ export async function setActiveAnnouncement(id) {
   const { error: onError } = await supabase.from('announcements').update({ is_active: true }).eq('id', id)
   if (onError) throw onError
 }
+
+/* ---------- Feature ticker (staff/admin panel only, auto-expires after 24h) ---------- */
+export async function fetchActiveFeatureAnnouncements() {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { data, error } = await supabase
+    .from('feature_announcements')
+    .select('*')
+    .gt('created_at', since)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+export async function addFeatureAnnouncement(message) {
+  const { error } = await supabase.from('feature_announcements').insert({ message })
+  if (error) throw error
+}
+export async function deleteFeatureAnnouncement(id) {
+  const { error } = await supabase.from('feature_announcements').delete().eq('id', id)
+  if (error) throw error
+}
