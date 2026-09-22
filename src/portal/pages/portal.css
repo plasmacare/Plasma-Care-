@@ -111,6 +111,16 @@
 }
 .b2b-header__brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--navy-950); }
 .b2b-header__brand img { width: 32px; height: 32px; }
+.b2b-header__account {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--navy-950);
+  background: var(--line);
+  white-space: nowrap;
+}
+.b2b-header__account.active { background: var(--navy-950); color: #fff; }
 
 .b2b-nav {
   display: flex;
