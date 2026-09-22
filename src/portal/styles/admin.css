@@ -1341,3 +1341,45 @@ body { font-family: var(--font-body); color: var(--ink); }
 .report-builder__test textarea {
   resize: vertical;
 }
+
+/* ---------- Feature ticker ("what's new", auto-expires after 24h) ---------- */
+.feature-ticker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--navy-950, #0B2545);
+  color: #fff;
+  padding: 6px 14px;
+  overflow: hidden;
+}
+.feature-ticker__badge {
+  flex: 0 0 auto;
+  background: var(--red-600, #C0152F);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.feature-ticker__viewport {
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.feature-ticker__track {
+  display: inline-flex;
+  gap: 60px;
+  animation: feature-ticker-scroll 22s linear infinite;
+  font-size: 0.85rem;
+}
+.feature-ticker__track span { padding-right: 60px; }
+@keyframes feature-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feature-ticker__track { animation: none; }
+  .feature-ticker__viewport { overflow-x: auto; }
+}
