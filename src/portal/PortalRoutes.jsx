@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
 import { PortalAuthProvider } from './lib/portalAuth.jsx'
 import PortalGate from './components/PortalGate'
 import Login from './pages/Login'
@@ -21,6 +22,26 @@ import './pages/portal.css'
 // of this (Supabase MFA, admin tabs, B2B forms) is in the public bundle
 // a first-time customer downloads.
 export default function PortalRoutes() {
+  // Search engines shouldn't index the staff/admin/B2B portal — robots.txt
+  // can't target hash-based routes (see public/robots.txt), so this sets
+  // a real <meta name="robots"> tag for as long as any portal page is
+  // mounted, and removes it again when navigating back to the public
+  // customer site.
+  useEffect(() => {
+    let tag = document.querySelector('meta[name="robots"]')
+    const created = !tag
+    if (!tag) {
+      tag = document.createElement('meta')
+      tag.setAttribute('name', 'robots')
+      document.head.appendChild(tag)
+    }
+    tag.setAttribute('content', 'noindex, nofollow')
+    return () => {
+      if (created) tag.remove()
+      else tag.setAttribute('content', 'index, follow')
+    }
+  }, [])
+
   return (
     <PortalAuthProvider>
       <OfflineBanner />
