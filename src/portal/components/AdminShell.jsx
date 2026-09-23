@@ -44,6 +44,11 @@ export default function AdminShell() {
   const tabs = roleTabs
 
   const [tab, setTab] = useState(tabs[0]?.key || 'bookings')
+  const [lastTab, setLastTab] = useState(tabs[0]?.key || 'bookings')
+  function changeTab(key) {
+    setTab(key)
+    if (key !== 'account') setLastTab(key)
+  }
   const seenIds = useRef(new Set())
   const sinceRef = useRef(new Date().toISOString())
 
@@ -115,7 +120,13 @@ export default function AdminShell() {
         </p>
       ) : (
         <>
-          {tabs.length > 0 && <Tabs tabs={tabs} active={tab} onChange={setTab} />}
+          {tab === 'account' ? (
+            <button type="button" className="btn btn--ghost" style={{ margin: '12px 16px 0' }} onClick={() => setTab(lastTab)}>
+              ← Back
+            </button>
+          ) : (
+            tabs.length > 0 && <Tabs tabs={tabs} active={tab} onChange={changeTab} />
+          )}
 
           {tab === 'account' && <AccountPage />}
           {tab === 'bookings' && <Dashboard />}
