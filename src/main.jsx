@@ -1,6 +1,10 @@
 import ReactDOM from 'react-dom/client'
 import './styles/tokens.css'
 import './styles/global.css'
+import { installDeterrents, printConsoleWarning } from './lib/siteSecurity'
+
+installDeterrents()
+printConsoleWarning()
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
