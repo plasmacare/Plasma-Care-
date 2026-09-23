@@ -189,3 +189,20 @@
 @keyframes site-bg-link-flow {
   to { stroke-dashoffset: -18; }
 }
+
+/* ---------- Casual copy-protection deterrent ---------- */
+/* Text selection is disabled site-wide by default, but re-enabled for
+   anything a visitor should genuinely be able to select/copy: form
+   fields, editable areas, and normal body/paragraph text (report
+   values, addresses, order IDs, etc. people legitimately need to copy).
+   Only chrome-y UI (buttons, nav, headings, labels) stays unselectable.
+   See src/lib/siteSecurity.js for why this is a deterrent, not security. */
+* {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea, [contenteditable="true"],
+p, span, li, td, th, h1, h2, h3, h4, h5, h6, label, pre, code {
+  -webkit-user-select: text;
+  user-select: text;
+}
