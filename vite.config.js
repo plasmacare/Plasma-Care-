@@ -48,4 +48,11 @@ export default defineConfig({
     }),
   ],
   base: '/Plasma-Care-/',
+  build: {
+    // Explicit on purpose: a source map would let anyone reconstruct
+    // readable source from the minified production bundle. This is
+    // still not real protection (see src/lib/siteSecurity.js) — it just
+    // avoids handing out the readable version for free.
+    sourcemap: false,
+  },
 })
