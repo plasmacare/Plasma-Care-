@@ -7,14 +7,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      // Only the portal (staff/admin/B2B) needs offline support — the
-      // customer booking site is left alone so first-time visitors never
-      // download a service worker for no benefit to them.
+      // Originally portal-only; now also used for the customer site's
+      // "Add to home screen" prompt for the Senior Citizen Assistant
+      // feature (see InstallAppPrompt.jsx) — same service worker, same
+      // build, so one manifest covers both.
       includeAssets: ['favicon.png'],
       manifest: {
-        name: 'Plasma Care Portal',
+        name: 'Plasma Care',
         short_name: 'Plasma Care',
-        start_url: '/portal/staff',
+        start_url: '/',
         display: 'standalone',
         theme_color: '#0B2545',
         background_color: '#0B2545',
