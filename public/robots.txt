@@ -1,0 +1,9 @@
+# Note: this app uses hash-based routing (https://.../Plasma-Care-/#/portal/...),
+# and robots.txt Disallow rules only match URL paths, not hash fragments
+# (the part after "#" never reaches the server) — so this file can't
+# selectively block the portal by path. The portal instead sets a
+# per-route <meta name="robots" content="noindex,nofollow"> tag at
+# runtime — see src/portal/PortalRoutes.jsx — which works correctly for
+# crawlers that execute JavaScript.
+User-agent: *
+Allow: /
