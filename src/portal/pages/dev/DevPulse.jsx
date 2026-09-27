@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePortalAuth } from '../../lib/portalAuth.jsx'
 import { fetchRecentLogs, fetchLogCounts, subscribeToLogs } from './devLogs'
 import { fetchMaintenanceSettings } from '../../../lib/maintenance'
+import { fetchSeniorAssistantEnabled, setSeniorAssistantEnabled } from '../../../lib/seniorAssistant'
 import { supabase } from '../../../lib/supabase'
 import SeoTools from './SeoTools'
+import OdiaVoiceRecorder from './OdiaVoiceRecorder'
 import '../portal.css'
 import './devPulse.css'
 
@@ -27,9 +29,56 @@ export default function DevPulse() {
       <div className="collections-subnav" style={{ marginBottom: 16 }}>
         <button className={subTab === 'pulse' ? 'active' : ''} onClick={() => setSubTab('pulse')} type="button">Pulse</button>
         <button className={subTab === 'seo' ? 'active' : ''} onClick={() => setSubTab('seo')} type="button">SEO Tools</button>
+        <button className={subTab === 'settings' ? 'active' : ''} onClick={() => setSubTab('settings')} type="button">Feature Flags</button>
+        <button className={subTab === 'odia' ? 'active' : ''} onClick={() => setSubTab('odia')} type="button">Odia Voice</button>
       </div>
 
-      {subTab === 'pulse' ? <PulseView /> : <SeoTools />}
+      {subTab === 'pulse' ? <PulseView /> : subTab === 'seo' ? <SeoTools /> : subTab === 'odia' ? <OdiaVoiceRecorder /> : <FeatureFlagsView />}
+    </div>
+  )
+}
+
+function FeatureFlagsView() {
+  const [seniorAssistant, setSeniorAssistant] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchSeniorAssistantEnabled().then(setSeniorAssistant)
+  }, [])
+
+  async function toggle() {
+    const next = !seniorAssistant
+    setSeniorAssistant(next) // optimistic
+    setBusy(true)
+    setError('')
+    try {
+      await setSeniorAssistantEnabled(next)
+    } catch (err) {
+      setSeniorAssistant(!next)
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="slots-form-card">
+      <h3>Senior Citizen Assistant</h3>
+      <p className="portal-form__hint" style={{ marginBottom: 12 }}>
+        Homepage "Are you a senior citizen / need help?" prompt, guided step-by-step tutorial mode, and the
+        voice-guided booking assistant (Hindi + English voice, Odia guided-text). When off, none of this
+        shows on the customer site at all.
+      </p>
+      {error && <p className="admin-error">{error}</p>}
+      {seniorAssistant === null ? (
+        <p>Loading…</p>
+      ) : (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input type="checkbox" checked={seniorAssistant} onChange={toggle} disabled={busy} />
+          {seniorAssistant ? 'Enabled — visible on the homepage' : 'Disabled — hidden from customers'}
+        </label>
+      )}
     </div>
   )
 }
