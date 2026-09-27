@@ -23,11 +23,10 @@ function ensureConfigured() {
 }
 
 /**
- * Uploads a PDF (File or Blob) to Cloudinary and returns { url, publicId }.
- * `folder` groups files in the Cloudinary media library (e.g. by booking
- * id, or by test name for a standalone-generated report).
+ * Uploads any file (File or Blob) to Cloudinary and returns { url, publicId }.
+ * `folder` groups files in the Cloudinary media library.
  */
-export async function uploadPdfToCloudinary(file, folder) {
+export async function uploadFileToCloudinary(file, folder) {
   ensureConfigured()
   const form = new FormData()
   form.append('file', file)
@@ -43,4 +42,9 @@ export async function uploadPdfToCloudinary(file, folder) {
     throw new Error(data?.error?.message || 'Cloudinary upload failed.')
   }
   return { url: data.secure_url, publicId: data.public_id }
+}
+
+/** Thin, name-preserving wrapper — PDFs are the most common caller. */
+export async function uploadPdfToCloudinary(file, folder) {
+  return uploadFileToCloudinary(file, folder)
 }
