@@ -6,6 +6,7 @@ import BloodDropWall from '../components/BloodDropWall'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import PortalMenu from '../components/PortalMenu'
 import AnnouncementPopup from '../components/AnnouncementPopup'
+import SeniorAssistantPrompt from '../components/SeniorAssistantPrompt'
 import { useLanguage } from '../lib/i18n.jsx'
 import { fetchAvailableLegalPages } from '../lib/content'
 import { isSlowConnection } from '../lib/networkSpeed'
@@ -53,6 +54,7 @@ export default function Home() {
     <div className="home">
       <BloodDropWall />
       <AnnouncementPopup />
+      <SeniorAssistantPrompt />
       {slowConnection && (
         <a href="/lite" className="home__slow-banner">
           Slow connection detected — use the simplified booking page instead →
