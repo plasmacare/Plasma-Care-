@@ -54,7 +54,6 @@ export default function Home() {
     <div className="home">
       <BloodDropWall />
       <AnnouncementPopup />
-      <SeniorAssistantPrompt />
       {slowConnection && (
         <a href="/lite" className="home__slow-banner">
           Slow connection detected — use the simplified booking page instead →
@@ -83,6 +82,8 @@ export default function Home() {
           <p className="service-card__desc">{t('svc_pathology_desc')}</p>
           <span className="service-card__cta">{t('bookNow')}</span>
         </Link>
+
+        <SeniorAssistantPrompt />
 
         <p className="home__also-label">{t('alsoAvailable')}</p>
         <div className="home__chip-row">

@@ -509,3 +509,57 @@
   gap: 10px;
   margin-top: 12px;
 }
+
+/* ---------- Game-style tutorial spotlight ---------- */
+.tutorial-spotlight-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 15, 30, 0.72);
+  backdrop-filter: blur(1.5px);
+  z-index: 9998;
+}
+.tutorial-spotlight-target {
+  z-index: 9999;
+  border-radius: 10px;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.95);
+}
+.tutorial-spotlight-ring {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  border: 3px solid var(--red-600);
+  border-radius: 14px;
+  animation: tutorial-ring-pulse 1.4s ease-in-out infinite;
+}
+@keyframes tutorial-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(192, 21, 47, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(192, 21, 47, 0); }
+}
+.tutorial-spotlight-caption {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: rgba(11, 37, 69, 0.95);
+  color: #fff;
+  padding: 14px 20px;
+  border-radius: 14px;
+  max-width: 92%;
+  text-align: center;
+  box-shadow: var(--shadow-raised);
+}
+.tutorial-spotlight-caption p {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+.tutorial-spotlight-caption button {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}

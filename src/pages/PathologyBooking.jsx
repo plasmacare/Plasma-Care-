@@ -5,6 +5,7 @@ import LocationPicker from '../components/LocationPicker'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import TurnstileWidget from '../components/TurnstileWidget'
 import VoiceInputButton from '../components/VoiceInputButton'
+import TutorialSpotlight from '../components/TutorialSpotlight'
 import InstallAppPrompt from '../components/InstallAppPrompt'
 import { getVerificationId } from '../lib/turnstile'
 import { useLanguage } from '../lib/i18n.jsx'
@@ -103,31 +104,81 @@ export default function PathologyBooking() {
     setAssistantMode(false)
   }
 
-  // Reads the current step's instruction aloud every time the step
-  // changes, so a guided-mode user always hears what to do next without
-  // having to find/tap anything first. Odia has no browser voice, so it
-  // plays a custom-recorded clip instead (see Developer panel -> Odia
-  // Voice) when one exists for that step; otherwise it stays silent and
-  // relies on the Odia text already shown on screen.
+  // Reads the CURRENT FIELD's instruction aloud (not just the step) and
+  // spotlights it — see guidedFields below. Odia has no browser voice,
+  // so it plays a custom-recorded clip instead (Developer panel -> Odia
+  // Voice) when one exists for that field; otherwise it stays silent
+  // and relies on the Odia text already shown on screen.
+  const footerRef = useRef(null)
+  const patientNameRef = useRef(null)
+  const patientAgeRef = useRef(null)
+  const patientGenderRef = useRef(null)
+  const testsAreaRef = useRef(null)
+  const typeAreaRef = useRef(null)
+  const scheduleAreaRef = useRef(null)
+  const detailsNameRef = useRef(null)
+  const detailsPhoneRef = useRef(null)
+
+  const guidedFields = useMemo(() => {
+    if (!assistantMode) return []
+    if (step === STEP.PATIENT) {
+      return [
+        { ref: patientNameRef, done: !!patientName.trim(), captionKey: 'stepPatient' },
+        { ref: patientAgeRef, done: !!patientAge.trim(), captionKey: 'stepAge' },
+        { ref: patientGenderRef, done: !!patientGender, captionKey: 'stepGender' },
+        { ref: footerRef, done: false, captionKey: 'next' },
+      ]
+    }
+    if (step === STEP.TESTS) {
+      return [
+        { ref: testsAreaRef, done: selectedPackages.length + selectedTests.length > 0, captionKey: 'stepTests' },
+        { ref: footerRef, done: false, captionKey: 'next' },
+      ]
+    }
+    if (step === STEP.TYPE) {
+      return [
+        { ref: typeAreaRef, done: !!bookingType, captionKey: 'stepType' },
+        { ref: footerRef, done: false, captionKey: 'next' },
+      ]
+    }
+    if (step === STEP.SCHEDULE) {
+      return [
+        { ref: scheduleAreaRef, done: !!date, captionKey: 'stepSchedule' },
+        { ref: footerRef, done: false, captionKey: 'next' },
+      ]
+    }
+    if (step === STEP.DETAILS) {
+      return [
+        { ref: detailsNameRef, done: !!name.trim(), captionKey: 'stepContactName' },
+        { ref: detailsPhoneRef, done: phone.trim().length >= 10, captionKey: 'stepPhone' },
+        { ref: footerRef, done: false, captionKey: 'confirm' },
+      ]
+    }
+    return []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assistantMode, step, patientName, patientAge, patientGender, selectedPackages, selectedTests, bookingType, date, name, phone])
+
+  const [activeGuidedIndex, setActiveGuidedIndex] = useState(0)
+  useEffect(() => { setActiveGuidedIndex(0) }, [step])
   useEffect(() => {
-    if (!assistantMode) return
-    const stepKey = {
-      [STEP.PATIENT]: 'stepPatient',
-      [STEP.TESTS]: 'stepTests',
-      [STEP.TYPE]: 'stepType',
-      [STEP.LOCATION]: 'stepLocation',
-      [STEP.SCHEDULE]: 'stepSchedule',
-      [STEP.DETAILS]: 'stepPhone',
-      [STEP.DONE]: 'stepReview',
-    }[step]
-    if (!stepKey) return
+    if (!assistantMode || guidedFields.length === 0) return
+    if (activeGuidedIndex < guidedFields.length - 1 && guidedFields[activeGuidedIndex]?.done) {
+      setActiveGuidedIndex((i) => i + 1)
+    }
+  }, [assistantMode, guidedFields, activeGuidedIndex])
+
+  const activeGuidedField = guidedFields[activeGuidedIndex]
+  const activeCaptionKey = activeGuidedField?.captionKey
+
+  useEffect(() => {
+    if (!assistantMode || !activeCaptionKey) return
     if (assistantLangCode === 'or') {
-      playClip(odiaClips[stepKey])
+      playClip(odiaClips[activeCaptionKey])
     } else {
-      speak(a[stepKey], assistantSpeechLang)
+      speak(a[activeCaptionKey], assistantSpeechLang)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, assistantMode, odiaClips])
+  }, [activeCaptionKey, assistantMode, odiaClips])
 
   useEffect(() => {
     fetchPackages().then(setPackages).catch(() => {})
@@ -216,6 +267,7 @@ export default function PathologyBooking() {
         scheduledDate: formatLocalDate(date),
         address: location,
         verificationId,
+        bookedViaSeniorAssistant: assistantMode,
       })
       await savePatientDetails(booking.id, {
         name: patientName,
@@ -296,7 +348,7 @@ export default function PathologyBooking() {
     <div className={`page${assistantMode ? ' senior-mode' : ''}`}>
       <div className="page-header">
         {step !== STEP.PAYMENT && (
-          <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
+          <button className="page-header__back" onClick={() => (step === 0 ? navigate('/') : setStep(assistantMode && step === STEP.TESTS ? STEP.PATIENT : step - (bookingType === 'lab_visit' && step === STEP.SCHEDULE ? 2 : 1)))}>
             <BackIcon />
           </button>
         )}
@@ -324,6 +376,7 @@ export default function PathologyBooking() {
           bloodGroup={patientBloodGroup} setBloodGroup={setPatientBloodGroup}
           t={t}
           assistantSpeechLang={assistantSpeechLang}
+          nameRef={patientNameRef} ageRef={patientAgeRef} genderRef={patientGenderRef}
         />
       )}
 
@@ -342,11 +395,12 @@ export default function PathologyBooking() {
           aiResult={aiResult}
           t={t}
           assistantSpeechLang={assistantSpeechLang}
+          areaRef={testsAreaRef}
         />
       )}
 
       {step === STEP.TYPE && (
-        <TypeStep bookingType={bookingType} setBookingType={setBookingType} t={t} assistantSpeechLang={assistantSpeechLang} a={a} />
+        <TypeStep bookingType={bookingType} setBookingType={setBookingType} t={t} assistantSpeechLang={assistantSpeechLang} a={a} areaRef={typeAreaRef} />
       )}
 
       {step === STEP.LOCATION && (
@@ -354,7 +408,7 @@ export default function PathologyBooking() {
       )}
 
       {step === STEP.SCHEDULE && (
-        <ScheduleStep date={date} setDate={setDate} t={t} assistantSpeechLang={assistantSpeechLang} />
+        <ScheduleStep date={date} setDate={setDate} t={t} assistantSpeechLang={assistantSpeechLang} areaRef={scheduleAreaRef} />
       )}
 
       {step === STEP.DETAILS && (
@@ -366,6 +420,7 @@ export default function PathologyBooking() {
           onTurnstileVerify={setTurnstileToken}
           onTurnstileExpire={() => setTurnstileToken('')}
           assistantSpeechLang={assistantSpeechLang}
+          nameRef={detailsNameRef} phoneRef={detailsPhoneRef}
         />
       )}
 
@@ -383,7 +438,7 @@ export default function PathologyBooking() {
       )}
 
       {step !== STEP.LOCATION && step !== STEP.PAYMENT && (
-        <div className="sticky-footer">
+        <div className="sticky-footer" ref={footerRef}>
           {step !== STEP.PATIENT && step !== STEP.PRESCRIPTION && (
             <div className="sticky-footer__summary">
               <div className="sticky-footer__amount">₹{total || 0}</div>
@@ -399,7 +454,7 @@ export default function PathologyBooking() {
             busy={busy}
             prescriptionBusy={prescriptionBusy}
             patientName={patientName}
-            onPatient={() => setStep(STEP.PRESCRIPTION)}
+            onPatient={() => setStep(assistantMode ? STEP.TESTS : STEP.PRESCRIPTION)}
             onPrescription={continueFromPrescription}
             onTests={() => setStep(STEP.TYPE)}
             onType={goNextFromType}
@@ -408,6 +463,15 @@ export default function PathologyBooking() {
             t={t}
           />
         </div>
+      )}
+
+      {assistantMode && activeGuidedField && (
+        <TutorialSpotlight
+          targetRef={activeGuidedField.ref}
+          caption={a[activeCaptionKey]}
+          skipLabel={a.exitAssistant}
+          onSkip={exitAssistantMode}
+        />
       )}
     </div>
   )
@@ -448,19 +512,19 @@ function FooterButton({
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown']
 
-function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t, assistantSpeechLang }) {
+function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t, assistantSpeechLang, nameRef, ageRef, genderRef }) {
   return (
     <div className="details-step">
       <h2 className="section-title">{t('patientDetailsTitle')}</h2>
       <p className="details-step__note">{t('patientDetailsNote')}</p>
-      <div className="field">
+      <div className="field" ref={nameRef}>
         <label>{t('patientName')}</label>
         <div className="field__with-voice">
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('fullNamePlaceholder')} />
           <VoiceInputButton speechLang={assistantSpeechLang} onResult={setName} />
         </div>
       </div>
-      <div className="field">
+      <div className="field" ref={ageRef}>
         <label>{t('patientAge')}</label>
         <input
           type="number"
@@ -471,7 +535,7 @@ function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, blo
           placeholder={t('patientAgePlaceholder')}
         />
       </div>
-      <div className="field">
+      <div className="field" ref={genderRef}>
         <label>{t('patientGender')}</label>
         <div className="pill-group">
           {['male', 'female', 'other'].map((g) => (
@@ -547,7 +611,7 @@ function PrescriptionStep({ file, setFile, t }) {
   )
 }
 
-function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, aiResult, t, assistantSpeechLang }) {
+function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, togglePackage, toggleTest, aiResult, t, assistantSpeechLang, areaRef }) {
   const [query, setQuery] = useState('')
   const [expandedPackageId, setExpandedPackageId] = useState(null)
   const q = query.trim().toLowerCase()
@@ -572,7 +636,7 @@ function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, t
   }
 
   return (
-    <div className="tests-step">
+    <div className="tests-step" ref={areaRef}>
       <div className="search-bar">
         <SearchIcon />
         <input
@@ -657,14 +721,14 @@ function TestSelectionStep({ packages, tests, selectedPackages, selectedTests, t
   )
 }
 
-function TypeStep({ bookingType, setBookingType, t, assistantSpeechLang, a }) {
+function TypeStep({ bookingType, setBookingType, t, assistantSpeechLang, a, areaRef }) {
   function handleVoice(spokenText) {
     const text = spokenText.toLowerCase()
     if (['home', 'ghar', 'घर', 'ଘର'].some((w) => text.includes(w))) setBookingType('home_collection')
     else if (['lab', 'lab visit', 'लैब', 'ଲାବ'].some((w) => text.includes(w))) setBookingType('lab_visit')
   }
   return (
-    <div className="type-step">
+    <div className="type-step" ref={areaRef}>
       {assistantSpeechLang && (
         <div className="voice-choice-row">
           <VoiceInputButton speechLang={assistantSpeechLang} onResult={handleVoice} label={`${a.optionLab} / ${a.optionHome}`} />
@@ -695,7 +759,7 @@ function TypeStep({ bookingType, setBookingType, t, assistantSpeechLang, a }) {
   )
 }
 
-function ScheduleStep({ date, setDate, t, assistantSpeechLang }) {
+function ScheduleStep({ date, setDate, t, assistantSpeechLang, areaRef }) {
   const days = nextDays(14)
   function handleVoice(spokenText) {
     const parsed = parseSpokenDate(spokenText)
@@ -705,7 +769,7 @@ function ScheduleStep({ date, setDate, t, assistantSpeechLang }) {
     }
   }
   return (
-    <div className="schedule-step">
+    <div className="schedule-step" ref={areaRef}>
       <h2 className="section-title">{t('pickDate')}</h2>
       {assistantSpeechLang && (
         <div className="voice-choice-row">
@@ -865,21 +929,21 @@ function PaymentStep({ info, error, onRetry, bookingId, screenshotUrl, onScreens
   )
 }
 
-function DetailsStep({ name, setName, phone, setPhone, error, t, onTurnstileVerify, onTurnstileExpire, assistantSpeechLang }) {
+function DetailsStep({ name, setName, phone, setPhone, error, t, onTurnstileVerify, onTurnstileExpire, assistantSpeechLang, nameRef, phoneRef }) {
   function handlePhoneVoice(spokenText) {
     const digits = spokenText.replace(/\D/g, '').slice(0, 10)
     if (digits) setPhone(digits)
   }
   return (
     <div className="details-step">
-      <div className="field">
+      <div className="field" ref={nameRef}>
         <label>{t('fullName')}</label>
         <div className="field__with-voice">
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('fullNamePlaceholder')} />
           <VoiceInputButton speechLang={assistantSpeechLang} onResult={setName} />
         </div>
       </div>
-      <div className="field">
+      <div className="field" ref={phoneRef}>
         <label>{t('phoneNumber')}</label>
         <div className="field__with-voice">
           <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder={t('phonePlaceholder')} />
