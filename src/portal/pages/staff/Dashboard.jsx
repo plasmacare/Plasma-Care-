@@ -46,7 +46,7 @@ const CALL_STATUS_LABEL = {
 }
 
 export default function Dashboard() {
-  const { staffProfile } = usePortalAuth()
+  const { staffProfile, role } = usePortalAuth()
   const [lookups, setLookups] = useState({ packagesById: {}, testsById: {}, slotsById: {} })
   const [paymentSettings, setPaymentSettings] = useState(null)
   const [bookings, setBookings] = useState([])
@@ -202,6 +202,7 @@ export default function Dashboard() {
   }
 
   async function handleDelete(booking) {
+    if (role !== 'admin') return // admin-only — also enforced by the database, see supabase/admin_only_booking_delete.sql
     if (!confirm(`Permanently delete this booking (${booking.customer_name || 'no name'})? This can't be undone.`)) return
     try {
       await deleteBooking(booking)
@@ -318,7 +319,7 @@ export default function Dashboard() {
             onCallStatus={(s) => handleCallStatus(b, s)}
             onNotes={(n) => handleNotes(b, n)}
             onSpamToggle={() => handleSpamToggle(b)}
-            onDelete={() => handleDelete(b)}
+            onDelete={role === 'admin' ? () => handleDelete(b) : undefined}
             onReportUpload={(f) => handleReportUpload(b, f)}
             onReportSkip={() => handleReportSkip(b)}
             onReportReset={() => handleReportReset(b)}
@@ -352,6 +353,9 @@ function BookingCard({
 
   return (
     <div className={`booking-card status--${booking.status}${booking.is_spam ? ' booking-card--spam' : ''}${booking.b2b_account_id ? ' booking-card--b2b' : ''}`}>
+      {booking.booked_via_senior_assistant && (
+        <div className="senior-booking-banner">Booked by senior citizen</div>
+      )}
       <button type="button" className="booking-card__summary" onClick={onToggle}>
         <div className="booking-card__main">
           <span className="booking-card__name">
@@ -529,9 +533,11 @@ function BookingCard({
             <button type="button" className={`spam-toggle${booking.is_spam ? ' spam-toggle--active' : ''}`} onClick={onSpamToggle}>
               {booking.is_spam ? 'Unmark spam' : 'Mark as spam'}
             </button>
-            <button type="button" className="booking-card__delete" onClick={onDelete}>
-              Delete booking
-            </button>
+            {onDelete && (
+              <button type="button" className="booking-card__delete" onClick={onDelete}>
+                Delete booking
+              </button>
+            )}
           </div>
         </div>
       )}
