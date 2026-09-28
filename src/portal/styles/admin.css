@@ -1383,3 +1383,14 @@ body { font-family: var(--font-body); color: var(--ink); }
   .feature-ticker__track { animation: none; }
   .feature-ticker__viewport { overflow-x: auto; }
 }
+
+/* Flags bookings made through the Senior Citizen guided assistant. */
+.senior-booking-banner {
+  background: #FFF4D6;
+  color: #7A5200;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 12px;
+  border-radius: 8px 8px 0 0;
+}
