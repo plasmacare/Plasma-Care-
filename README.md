@@ -373,3 +373,15 @@ actually matters:
 - **Customer IP is now recorded** per booking (`supabase/customer_ip_tracking.sql`)
   — used by the admin panel's spam detection to flag unusually many
   bookings from the same IP.
+
+## Latest update — senior booking fixes, multilingual forms, Analytics > Customers
+
+**Run once in the Supabase SQL editor:** `supabase/multilingual_and_customer_insights.sql`.
+
+- Senior guided mode: mic errors fixed (speech is silenced before the mic opens; errors float instead of shifting the form), spotlight no longer jumps on the first typed character (a field finishes when you leave it), blood group is now a guided step, the location / payment / confirmation screens announce correctly, and an old announcement can no longer play over a new one.
+- Customers may fill the form in Hindi/Odia — names and landmarks are transliterated to English for staff (`src/lib/transliterate.js`), original text kept in `*_original` columns.
+- Booker IP is looked up from several providers in parallel and always shown in the booking card.
+- Collections: Accept/Decline removed — only **Start**.
+- "New feature ticker" moved to Developer panel > Feature Ticker.
+- Admin "Views" tab is now **Analytics** (internal tab key unchanged so access settings still work) with a new **Customers** section (home/lab visits, successful bookings, genuine score — for both bookers and patients).
+- Odia Voice: record **or upload** an audio file per phrase. New phrases to record: `stepBloodGroup`, `stepPayment`, `bookingDone` (plus `stepLocation`, which is now used).
