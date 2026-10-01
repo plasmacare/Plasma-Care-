@@ -33,8 +33,15 @@ export function speak(text, lang) {
   })
 }
 
+let currentClip = null
+
+/** Stops BOTH the browser voice and any pre-recorded clip that's playing — so an old step's announcement can never keep talking over the next step (or over the mic). */
 export function stopSpeaking() {
   if (isSpeechSynthesisSupported()) window.speechSynthesis.cancel()
+  if (currentClip) {
+    try { currentClip.pause() } catch { /* ignore */ }
+    currentClip = null
+  }
 }
 
 /** Plays a pre-recorded clip (used for Odia, or any language with a custom-recorded voice). Resolves when playback finishes or errors. */
@@ -44,7 +51,9 @@ export function playClip(url) {
       resolve()
       return
     }
+    stopSpeaking() // never let two announcements overlap
     const audio = new Audio(url)
+    currentClip = audio
     audio.onended = resolve
     audio.onerror = resolve
     audio.play().catch(resolve)
@@ -87,6 +96,62 @@ export function listenOnce(lang) {
       reject(new Error('error'))
     }
   })
+}
+
+/**
+ * Controllable version of listenOnce, used by the mic button: returns the
+ * recognition object so it can be stopped by a second tap, and reports
+ * specific error codes ('no-speech' | 'denied' | 'network' | 'busy' | 'error').
+ * Always silences any announcement first — on Android Chrome the mic
+ * fails ("audio-capture"/"aborted") if the page is still speaking.
+ */
+export function startListening(lang, { onResult, onError, onEnd }) {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!Recognition || !lang) {
+    onError('unsupported')
+    onEnd()
+    return null
+  }
+  stopSpeaking()
+  const recognition = new Recognition()
+  recognition.lang = lang
+  recognition.interimResults = false
+  recognition.continuous = false
+  recognition.maxAlternatives = 1
+  let gotResult = false
+  let failed = false
+  recognition.onresult = (event) => {
+    const text = event.results?.[0]?.[0]?.transcript
+    if (text) {
+      gotResult = true
+      onResult(text)
+    }
+  }
+  recognition.onerror = (event) => {
+    failed = true
+    const code = event.error
+    if (code === 'not-allowed' || code === 'service-not-allowed') onError('denied')
+    else if (code === 'no-speech') onError('no-speech')
+    else if (code === 'network') onError('network')
+    else if (code === 'aborted') failed = false // user tapped stop / we cancelled — not an error to show
+    else if (code === 'audio-capture') onError('busy')
+    else onError('error')
+  }
+  recognition.onend = () => {
+    if (!gotResult && !failed) onError('no-speech')
+    onEnd()
+  }
+  // Give the speaker a moment to actually go quiet before the mic opens,
+  // otherwise it hears its own voice (or refuses to start).
+  setTimeout(() => {
+    try {
+      recognition.start()
+    } catch {
+      onError('error')
+      onEnd()
+    }
+  }, 250)
+  return recognition
 }
 
 /** Loose match: does the spoken/typed text refer to one of the yes/no-style options? Works across en/hi/or since it just checks a few common words in each language. */

@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { compressImage } from './imageCompress'
 import { logEvent } from './telemetry'
+import { toEnglish, hasIndicScript, normalizeDigits } from './transliterate'
 
 export async function fetchPackages() {
   const { data, error } = await supabase
@@ -22,15 +23,52 @@ export async function fetchTests() {
   return data
 }
 
+const IP_CACHE_KEY = 'pc_client_ip'
+
+function fetchWithTimeout(url, ms = 3500) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), ms)
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer))
+}
+
+const IP_VALID = /^[0-9a-fA-F:.]{7,45}$/
+
+/**
+ * Looks up the customer's public IP. Tries several free providers in
+ * turn (any single one can be blocked by an ad-blocker, a firewall, or
+ * a rate limit — that's why IPs were often coming back empty), and
+ * caches the result for the browser session. Never throws.
+ */
 async function fetchClientIp() {
   try {
-    const res = await fetch('https://api.ipify.org?format=json')
-    const data = await res.json()
-    return data.ip || null
+    const cached = sessionStorage.getItem(IP_CACHE_KEY)
+    if (cached) return cached
+  } catch { /* storage blocked — carry on */ }
+
+  const providers = [
+    async () => (await (await fetchWithTimeout('https://api.ipify.org?format=json')).json()).ip,
+    async () => {
+      const text = await (await fetchWithTimeout('https://www.cloudflare.com/cdn-cgi/trace')).text()
+      return /^ip=(.+)$/m.exec(text)?.[1]?.trim()
+    },
+    async () => (await (await fetchWithTimeout('https://api64.ipify.org?format=json')).json()).ip,
+    async () => (await (await fetchWithTimeout('https://ipapi.co/json/')).json()).ip,
+  ]
+  // All providers in parallel, first valid answer wins — so one blocked
+  // or slow provider can't hold up the booking.
+  try {
+    const ip = await Promise.any(providers.map(async (lookup) => {
+      const value = await lookup()
+      if (!value || !IP_VALID.test(value)) throw new Error('bad ip')
+      return value
+    }))
+    try { sessionStorage.setItem(IP_CACHE_KEY, ip) } catch { /* ignore */ }
+    return ip
   } catch {
-    // Not fatal — spam detection just has one less signal for this booking.
-    return null
+    // every provider failed
   }
+  // Not fatal — spam detection just has one less signal for this booking.
+  return null
 }
 
 export async function createBooking({
@@ -46,6 +84,23 @@ export async function createBooking({
   bookedViaSeniorAssistant = false,
 }) {
   const customerIp = await fetchClientIp()
+
+  // Customers can fill the form in Hindi/Odia; staff always read English.
+  // The text they actually typed is kept alongside (only when it differs)
+  // so staff can double-check a spelling.
+  const originalName = (customerName || '').trim()
+  const englishName = toEnglish(originalName)
+  customerPhone = normalizeDigits(customerPhone).replace(/\D/g, '').slice(-10)
+  if (address) {
+    const landmark = (address.landmark || '').trim()
+    const englishLandmark = toEnglish(landmark)
+    address = {
+      ...address,
+      fullAddress: toEnglish(address.fullAddress || ''),
+      landmark: englishLandmark,
+      landmarkOriginal: hasIndicScript(landmark) ? landmark : null,
+    }
+  }
   // Generated here (not read back from the DB) because the anon role no
   // longer has SELECT on bookings — see secure_public_booking_access.sql.
   // We already know every field we're inserting, so there's nothing to
@@ -54,7 +109,8 @@ export async function createBooking({
 
   const { error: bookingError } = await supabase.from('bookings').insert({
     id,
-    customer_name: customerName,
+    customer_name: englishName,
+    ...(hasIndicScript(originalName) ? { customer_name_original: originalName } : {}),
     customer_phone: customerPhone,
     booking_type: bookingType,
     selected_packages: selectedPackages,
@@ -74,6 +130,7 @@ export async function createBooking({
       booking_id: id,
       full_address: address.fullAddress,
       landmark: address.landmark || null,
+      ...(address.landmarkOriginal ? { landmark_original: address.landmarkOriginal } : {}),
       latitude: address.latitude,
       longitude: address.longitude,
     })
@@ -89,7 +146,7 @@ export async function createBooking({
 
   return {
     id,
-    customer_name: customerName,
+    customer_name: englishName,
     customer_phone: customerPhone,
     booking_type: bookingType,
     selected_packages: selectedPackages,
@@ -125,11 +182,18 @@ export async function savePrescriptionUploadError(bookingId, message) {
 }
 
 export async function savePatientDetails(bookingId, { name, age, gender, bloodGroup }) {
+  const originalName = (name || '').trim()
+  const englishName = toEnglish(originalName)
+  const cleanAge = normalizeDigits(age).replace(/\D/g, '')
   const { error } = await supabase.rpc('rpc_patch_booking', {
     p_id: bookingId,
     p_patch: {
-      patient_name: name || null,
-      patient_age: age ? Number(age) : null,
+      patient_name: englishName || null,
+      // only sent when the patient typed in Hindi/Odia — the database
+      // function ignores keys it doesn't know, so this is safe before
+      // the new SQL file has been run
+      ...(hasIndicScript(originalName) ? { patient_name_original: originalName } : {}),
+      patient_age: cleanAge ? Number(cleanAge) : null,
       patient_gender: gender || null,
       patient_blood_group: bloodGroup || null,
     },
