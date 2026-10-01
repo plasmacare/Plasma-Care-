@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
-import { fetchMyJobs, fetchMyHistory, updateCollectionStatus, declineJob, subscribeToMyNewJobs } from '../../lib/collectionsData'
+import { fetchMyJobs, fetchMyHistory, updateCollectionStatus, subscribeToMyNewJobs } from '../../lib/collectionsData'
 import { fetchLookups } from '../../lib/adminData'
 import { logEvent } from '../../../lib/telemetry'
 import { supabase } from '../../../lib/supabase'
 import './collectionsTab.css'
 
+// No Accept / Decline step any more — an assigned job goes straight to
+// "Start". ('accepted' stays mapped only so any job already accepted
+// before this change can still be advanced.)
 const NEXT_ACTION = {
-  accepted: { next: 'en_route', label: 'Start — On the way' },
+  assigned: { next: 'en_route', label: 'Start' },
+  accepted: { next: 'en_route', label: 'Start' },
   en_route: { next: 'arrived', label: "I've arrived" },
   arrived: { next: 'collected', label: 'Mark sample collected' },
 }
@@ -114,20 +118,6 @@ function JobsList() {
     }
   }
 
-  async function decline(booking) {
-    setBusyId(booking.id)
-    setError('')
-    try {
-      await declineJob(booking.id)
-      logEvent({ type: 'collection_declined', source: 'staff', message: `Declined ${booking.customer_name}`, metadata: { booking_id: booking.id } })
-      await load()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusyId(null)
-    }
-  }
-
   if (jobs === null) return <p>Loading…</p>
 
   return (
@@ -149,8 +139,6 @@ function JobsList() {
               job={job}
               lookups={lookups}
               busy={busyId === job.id}
-              onAccept={() => act(job, 'accepted')}
-              onDecline={() => decline(job)}
               onAdvance={() => act(job, NEXT_ACTION[job.collection_status]?.next)}
             />
           ))}
@@ -198,7 +186,7 @@ function HistoryList() {
   )
 }
 
-function JobCard({ job, lookups, busy, onAccept, onDecline, onAdvance }) {
+function JobCard({ job, lookups, busy, onAdvance }) {
   const { packagesById, testsById } = lookups
   const items = [
     ...(job.selected_packages || []).map((id) => packagesById[id]?.name).filter(Boolean),
@@ -238,12 +226,6 @@ function JobCard({ job, lookups, busy, onAccept, onDecline, onAdvance }) {
       </div>
 
       <div className="job-card__primary-actions">
-        {job.collection_status === 'assigned' && (
-          <>
-            <button className="btn btn--primary" disabled={busy} onClick={onAccept}>Accept</button>
-            <button className="btn btn--ghost" disabled={busy} onClick={onDecline}>Decline</button>
-          </>
-        )}
         {nextAction && (
           <button className="btn btn--primary" disabled={busy} onClick={onAdvance}>
             {busy ? '…' : nextAction.label}

@@ -354,13 +354,14 @@ function BookingCard({
   return (
     <div className={`booking-card status--${booking.status}${booking.is_spam ? ' booking-card--spam' : ''}${booking.b2b_account_id ? ' booking-card--b2b' : ''}`}>
       {booking.booked_via_senior_assistant && (
-        <div className="senior-booking-banner">Booked by senior citizen</div>
+        <div className="senior-booking-banner">🤝 Booked with help — senior citizen assistant (be patient on the call)</div>
       )}
       <button type="button" className="booking-card__summary" onClick={onToggle}>
         <div className="booking-card__main">
           <span className="booking-card__name">
             {booking.b2b_account_id && <span className="b2b-badge">B2B</span>}
             {booking.customer_name || 'Unnamed'}
+            {booking.booked_via_senior_assistant && <span className="help-badge" title="Booked using the senior citizen guided assistant">Booked with help</span>}
             {isFlagged && <span className="spam-dot" title={booking.spamReasons.join(', ')}>⚠</span>}
           </span>
           <span className="booking-card__meta">
@@ -381,6 +382,12 @@ function BookingCard({
             </div>
           )}
           <DetailRow label="Type" value={booking.booking_type === 'home_collection' ? 'Home Collection' : 'Lab Visit'} />
+          {booking.booked_via_senior_assistant && (
+            <DetailRow label="Booked with help" value="Yes — customer used the senior citizen guided assistant" />
+          )}
+          {booking.customer_name_original && (
+            <DetailRow label="Contact name (as typed)" value={booking.customer_name_original} />
+          )}
           {(packageNames.length > 0 || testNames.length > 0) && (
             <DetailRow label="Tests / Packages" value={[...packageNames, ...testNames].join(', ') || '—'} />
           )}
@@ -404,7 +411,16 @@ function BookingCard({
               ].filter(Boolean).join(' · ') || '—'}
             />
           )}
-          {booking.customer_ip && <DetailRow label="IP address" value={booking.customer_ip} />}
+          {booking.patient_name_original && (
+            <DetailRow label="Patient name (as typed)" value={booking.patient_name_original} />
+          )}
+          {booking.address?.landmark_original && (
+            <DetailRow label="Landmark (as typed)" value={booking.address.landmark_original} />
+          )}
+          <DetailRow
+            label="Booked from IP"
+            value={booking.customer_ip || 'Not captured (customer\'s browser blocked the IP lookup)'}
+          />
 
           {(booking.prescription_url || booking.prescription_upload_error) && (
             <div className="prescription-panel">

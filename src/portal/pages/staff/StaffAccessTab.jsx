@@ -15,7 +15,7 @@ const TAB_LABELS = {
   announcements: 'Announcements',
   payments: 'Payments',
   collections: 'Collections (home-collection dispatch)',
-  views: 'Views',
+  views: 'Analytics',
 }
 
 export default function StaffAccessTab() {

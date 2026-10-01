@@ -4,8 +4,23 @@ import {
   fetchSiteSettings, updateSiteSettings,
 } from '../../lib/analyticsAdmin'
 import ViewsMap from '../../components/ViewsMap'
+import CustomersPanel from '../../components/CustomersPanel'
 
+/** Admin -> Analytics. (Tab key is still "views" internally so existing staff access settings keep working.) */
 export default function ViewsTab() {
+  const [section, setSection] = useState('overview')
+  return (
+    <div>
+      <div className="collections-subnav" style={{ margin: '12px 16px 0' }}>
+        <button type="button" className={section === 'overview' ? 'active' : ''} onClick={() => setSection('overview')}>Overview</button>
+        <button type="button" className={section === 'customers' ? 'active' : ''} onClick={() => setSection('customers')}>Customers</button>
+      </div>
+      {section === 'overview' ? <ViewsOverview /> : <div className="views-tab"><CustomersPanel /></div>}
+    </div>
+  )
+}
+
+function ViewsOverview() {
   const [stats, setStats] = useState(null)
   const [cities, setCities] = useState([])
   const [bookingsCount, setBookingsCount] = useState(null)
