@@ -5,7 +5,7 @@ import { logEvent } from '../../lib/telemetry'
 
 const TAB_LABELS = {
   bookings: 'Bookings', catalog: 'Catalog', pages: 'Pages', announcements: 'Announcements',
-  payments: 'Payments', views: 'Views', 'b2b-requests': 'B2B Requests', collections: 'Collections',
+  payments: 'Payments', views: 'Analytics', 'b2b-requests': 'B2B Requests', collections: 'Collections',
 }
 
 export default function AccountPage() {

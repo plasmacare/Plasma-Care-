@@ -26,7 +26,7 @@ const ALL_TAB_DEFS = [
   { key: 'pages', label: 'Pages' },
   { key: 'announcements', label: 'Announcements' },
   { key: 'payments', label: 'Payments' },
-  { key: 'views', label: 'Views' },
+  { key: 'views', label: 'Analytics' },
   { key: 'b2b-requests', label: 'B2B Requests' },
   { key: 'collections', label: 'Collections' },
   { key: 'reports', label: 'Report Generation' },
