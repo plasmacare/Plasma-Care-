@@ -48,7 +48,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: '/',
+  base: '/Plasma-Care-/',
   build: {
     // Explicit on purpose: a source map would let anyone reconstruct
     // readable source from the minified production bundle. This is
