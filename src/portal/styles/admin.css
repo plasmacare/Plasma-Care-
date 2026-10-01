@@ -1394,3 +1394,34 @@ body { font-family: var(--font-body); color: var(--ink); }
   padding: 4px 12px;
   border-radius: 8px 8px 0 0;
 }
+
+.help-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #FFF4D6;
+  color: #7A5200;
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* ---------- Analytics -> Customers ---------- */
+.customer-card__stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0 12px 12px; }
+.customer-stat { background: #F5F7FB; border-radius: 10px; padding: 8px 4px; text-align: center; display: flex; flex-direction: column; }
+.customer-stat__value { font-weight: 700; font-size: 1.05rem; }
+.customer-stat__label { font-size: 0.68rem; color: #5A6478; }
+.score-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+.score-pill--good { background: #DDF5E4; color: #146C2E; }
+.score-pill--ok { background: #E3F0FF; color: #0B4F9E; }
+.score-pill--neutral { background: #EEF0F4; color: #4A5468; }
+.score-pill--bad { background: #FDE2E4; color: #A3121F; }
+.score-bar { height: 8px; border-radius: 999px; background: #E6E9EF; overflow: hidden; margin-bottom: 8px; }
+.score-bar__fill { height: 100%; border-radius: 999px; }
+.score-bar__fill--good { background: #2E9E4F; }
+.score-bar__fill--ok { background: #2F7DE1; }
+.score-bar__fill--neutral { background: #8A93A6; }
+.score-bar__fill--bad { background: #C0152F; }
+.customer-card__history { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.customer-card__history-row { display: grid; grid-template-columns: 1fr 0.6fr 1fr 0.7fr; gap: 6px; font-size: 0.8rem; align-items: center; padding: 4px 0; border-bottom: 1px solid #EEF0F4; }
