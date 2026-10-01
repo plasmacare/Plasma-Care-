@@ -188,3 +188,25 @@ export function computeStats(bookings) {
   }
   return stats
 }
+
+/**
+ * Every booking, trimmed to just the columns the Customers view needs
+ * (pages through the table, since Supabase returns at most 1000 rows
+ * per request).
+ */
+export async function fetchAllBookingsForInsights() {
+  const PAGE = 1000
+  const cols = 'id, customer_name, customer_phone, booking_type, status, is_spam, customer_ip, patient_name, patient_age, patient_gender, scheduled_date, created_at, total_amount, payment_status, b2b_account_id, booked_via_senior_assistant'
+  let all = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(cols)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE - 1)
+    if (error) throw error
+    all = all.concat(data || [])
+    if (!data || data.length < PAGE) break
+  }
+  return all
+}
