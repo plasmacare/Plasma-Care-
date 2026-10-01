@@ -19,8 +19,8 @@ export default function OdiaVoiceRecorder() {
       <h3>Odia voice clips</h3>
       <p className="portal-form__hint" style={{ marginBottom: 12 }}>
         Browsers can't speak Odia at all, so the guided assistant uses these recordings instead when a
-        customer picks Odia. Record each phrase once (in your own voice), reading the Odia text shown below
-        it exactly. This only covers the assistant <em>speaking</em> — it still can't understand spoken
+        customer picks Odia. For each phrase, either record it here (in your own voice) or upload a ready-made
+        audio file (mp3, m4a, wav, ogg, webm), reading the Odia text shown below it exactly. This only covers the assistant <em>speaking</em> — it still can't understand spoken
         Odia back from the customer, so Odia mode stays type-to-answer.
       </p>
       {error && <p className="admin-error">{error}</p>}
@@ -47,6 +47,7 @@ function ClipRow({ clipKey, text, url, onSaved, onDeleted, onError }) {
   const [recording, setRecording] = useState(false)
   const [busy, setBusy] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [pendingBlob, setPendingBlob] = useState(null) // what "Save" will upload — a recording OR a chosen file
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const streamRef = useRef(null)
@@ -60,7 +61,10 @@ function ClipRow({ clipKey, text, url, onSaved, onDeleted, onError }) {
       chunksRef.current = []
       recorder.ondataavailable = (e) => chunksRef.current.push(e.data)
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        // use whatever format this browser actually recorded in (Safari
+        // records mp4, Chrome webm) — labelling it webm broke playback
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        setPendingBlob(blob)
         setPreviewUrl(URL.createObjectURL(blob))
         streamRef.current?.getTracks().forEach((t) => t.stop())
       }
@@ -77,14 +81,34 @@ function ClipRow({ clipKey, text, url, onSaved, onDeleted, onError }) {
     setRecording(false)
   }
 
+  function handleFileChosen(file) {
+    if (!file) return
+    onError('')
+    if (!file.type.startsWith('audio/') && !/\.(mp3|m4a|aac|wav|ogg|oga|opus|webm|mp4)$/i.test(file.name)) {
+      onError('Please choose an audio file (mp3, m4a, wav, ogg or webm).')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      onError('That file is over 10 MB — a short spoken line should be much smaller. Please trim it.')
+      return
+    }
+    setPendingBlob(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  function handleDiscard() {
+    setPendingBlob(null)
+    setPreviewUrl('')
+  }
+
   async function handleSave() {
-    if (!previewUrl) return
+    if (!pendingBlob) return
     setBusy(true)
     onError('')
     try {
-      const blob = await fetch(previewUrl).then((r) => r.blob())
-      const savedUrl = await uploadVoiceClip('or', clipKey, blob)
+      const savedUrl = await uploadVoiceClip('or', clipKey, pendingBlob)
       onSaved(savedUrl)
+      setPendingBlob(null)
       setPreviewUrl('')
     } catch (err) {
       onError(err.message)
@@ -114,7 +138,19 @@ function ClipRow({ clipKey, text, url, onSaved, onDeleted, onError }) {
       <p style={{ margin: 0 }}>{text}</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         {!recording ? (
-          <button type="button" className="btn btn--secondary" onClick={startRecording} disabled={busy}>🎙️ Record</button>
+          <>
+            <button type="button" className="btn btn--secondary" onClick={startRecording} disabled={busy}>🎙️ Record</button>
+            <label className="btn btn--secondary" style={{ cursor: 'pointer' }}>
+              ⬆️ Upload audio
+              <input
+                type="file"
+                accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.webm"
+                hidden
+                disabled={busy}
+                onChange={(e) => { handleFileChosen(e.target.files[0]); e.target.value = '' }}
+              />
+            </label>
+          </>
         ) : (
           <button type="button" className="btn btn--primary" onClick={stopRecording}>⏹ Stop</button>
         )}
@@ -122,8 +158,9 @@ function ClipRow({ clipKey, text, url, onSaved, onDeleted, onError }) {
           <>
             <audio controls src={previewUrl} style={{ height: 32 }} />
             <button type="button" className="btn btn--primary" onClick={handleSave} disabled={busy}>
-              {busy ? 'Saving…' : 'Save this recording'}
+              {busy ? 'Saving…' : 'Save this audio'}
             </button>
+            <button type="button" className="btn btn--ghost" onClick={handleDiscard} disabled={busy}>Discard</button>
           </>
         )}
         {url && !previewUrl && (

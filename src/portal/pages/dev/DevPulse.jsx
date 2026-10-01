@@ -6,6 +6,7 @@ import { fetchSeniorAssistantEnabled, setSeniorAssistantEnabled } from '../../..
 import { supabase } from '../../../lib/supabase'
 import SeoTools from './SeoTools'
 import OdiaVoiceRecorder from './OdiaVoiceRecorder'
+import FeatureTickerManager from './FeatureTickerManager'
 import '../portal.css'
 import './devPulse.css'
 
@@ -31,9 +32,10 @@ export default function DevPulse() {
         <button className={subTab === 'seo' ? 'active' : ''} onClick={() => setSubTab('seo')} type="button">SEO Tools</button>
         <button className={subTab === 'settings' ? 'active' : ''} onClick={() => setSubTab('settings')} type="button">Feature Flags</button>
         <button className={subTab === 'odia' ? 'active' : ''} onClick={() => setSubTab('odia')} type="button">Odia Voice</button>
+        <button className={subTab === 'ticker' ? 'active' : ''} onClick={() => setSubTab('ticker')} type="button">Feature Ticker</button>
       </div>
 
-      {subTab === 'pulse' ? <PulseView /> : subTab === 'seo' ? <SeoTools /> : subTab === 'odia' ? <OdiaVoiceRecorder /> : <FeatureFlagsView />}
+      {subTab === 'pulse' ? <PulseView /> : subTab === 'seo' ? <SeoTools /> : subTab === 'odia' ? <OdiaVoiceRecorder /> : subTab === 'ticker' ? <FeatureTickerManager /> : <FeatureFlagsView />}
     </div>
   )
 }
