@@ -10,7 +10,8 @@ import InstallAppPrompt from '../components/InstallAppPrompt'
 import { getVerificationId } from '../lib/turnstile'
 import { useLanguage } from '../lib/i18n.jsx'
 import { ASSISTANT_LANGS, ASSISTANT_STRINGS } from '../lib/seniorAssistantStrings'
-import { speak, findBestMatch, parseSpokenDate, playClip } from '../lib/voiceAssistant'
+import { speak, stopSpeaking, findBestMatch, parseSpokenDate, playClip } from '../lib/voiceAssistant'
+import { normalizeDigits } from '../lib/transliterate'
 import { fetchVoiceClips } from '../lib/voiceClips'
 import {
   fetchPackages, fetchTests, createBooking, savePatientDetails,
@@ -113,19 +114,29 @@ export default function PathologyBooking() {
   const patientNameRef = useRef(null)
   const patientAgeRef = useRef(null)
   const patientGenderRef = useRef(null)
+  const patientBloodRef = useRef(null)
   const testsAreaRef = useRef(null)
   const typeAreaRef = useRef(null)
   const scheduleAreaRef = useRef(null)
   const detailsNameRef = useRef(null)
   const detailsPhoneRef = useRef(null)
 
+  // A typed field only counts as "finished" once the person leaves it
+  // (taps elsewhere / presses Done on the keyboard) — NOT on the first
+  // character. Before this, typing a single letter or digit instantly
+  // moved the spotlight to the next box, so names/ages/phone numbers
+  // couldn't be typed in full.
+  const [committed, setCommitted] = useState({})
+  const commit = (key) => setCommitted((c) => (c[key] ? c : { ...c, [key]: true }))
+
   const guidedFields = useMemo(() => {
     if (!assistantMode) return []
     if (step === STEP.PATIENT) {
       return [
-        { ref: patientNameRef, done: !!patientName.trim(), captionKey: 'stepPatient' },
-        { ref: patientAgeRef, done: !!patientAge.trim(), captionKey: 'stepAge' },
+        { ref: patientNameRef, done: !!committed.patientName && !!patientName.trim(), captionKey: 'stepPatient' },
+        { ref: patientAgeRef, done: !!committed.patientAge && !!patientAge.trim(), captionKey: 'stepAge' },
         { ref: patientGenderRef, done: !!patientGender, captionKey: 'stepGender' },
+        { ref: patientBloodRef, done: !!patientBloodGroup, captionKey: 'stepBloodGroup' },
         { ref: footerRef, done: false, captionKey: 'next' },
       ]
     }
@@ -149,14 +160,14 @@ export default function PathologyBooking() {
     }
     if (step === STEP.DETAILS) {
       return [
-        { ref: detailsNameRef, done: !!name.trim(), captionKey: 'stepContactName' },
-        { ref: detailsPhoneRef, done: phone.trim().length >= 10, captionKey: 'stepPhone' },
+        { ref: detailsNameRef, done: !!committed.name && !!name.trim(), captionKey: 'stepContactName' },
+        { ref: detailsPhoneRef, done: !!committed.phone && phone.trim().length >= 10, captionKey: 'stepPhone' },
         { ref: footerRef, done: false, captionKey: 'confirm' },
       ]
     }
     return []
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assistantMode, step, patientName, patientAge, patientGender, selectedPackages, selectedTests, bookingType, date, name, phone])
+  }, [assistantMode, step, patientName, patientAge, patientGender, patientBloodGroup, selectedPackages, selectedTests, bookingType, date, name, phone, committed])
 
   const [activeGuidedIndex, setActiveGuidedIndex] = useState(0)
   useEffect(() => { setActiveGuidedIndex(0) }, [step])
@@ -170,15 +181,40 @@ export default function PathologyBooking() {
   const activeGuidedField = guidedFields[activeGuidedIndex]
   const activeCaptionKey = activeGuidedField?.captionKey
 
+  function playAnnouncement(key) {
+    if (assistantLangCode === 'or') playClip(odiaClips[key])
+    else speak(a[key], assistantSpeechLang)
+  }
+
   useEffect(() => {
     if (!assistantMode || !activeCaptionKey) return
-    if (assistantLangCode === 'or') {
-      playClip(odiaClips[activeCaptionKey])
-    } else {
-      speak(a[activeCaptionKey], assistantSpeechLang)
-    }
+    playAnnouncement(activeCaptionKey)
+    // Cut the old line off as soon as the step/field changes, so a
+    // previous step's announcement never talks over the new one.
+    return () => stopSpeaking()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCaptionKey, assistantMode, odiaClips])
+
+  // Steps with no spotlight (map, payment) still announce what to do —
+  // spoken + shown in a banner that doesn't block the screen. Before
+  // this the location step stayed silent in guided mode.
+  const announceKey = step === STEP.LOCATION ? 'stepLocation' : step === STEP.PAYMENT ? 'stepPayment' : null
+  useEffect(() => {
+    if (!assistantMode || !announceKey) return
+    playAnnouncement(announceKey)
+    return () => stopSpeaking()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assistantMode, announceKey, odiaClips])
+
+  // Guided mode's job is done once the booking is confirmed — clear the
+  // stored flags so a future normal visit doesn't stay in assistant
+  // mode. (Done in an effect, not during render.)
+  useEffect(() => {
+    if (step === STEP.DONE && assistantMode) {
+      localStorage.removeItem('pc_assistant_mode')
+      localStorage.removeItem('pc_assistant_lang')
+    }
+  }, [step, assistantMode])
 
   useEffect(() => {
     fetchPackages().then(setPackages).catch(() => {})
@@ -323,13 +359,6 @@ export default function PathologyBooking() {
   }
 
   if (step === STEP.DONE) {
-    // Guided mode's job is done once the booking is confirmed — clear the
-    // stored flags (not React state, since this screen is the last one)
-    // so a future normal visit doesn't stay in assistant mode.
-    if (assistantMode) {
-      localStorage.removeItem('pc_assistant_mode')
-      localStorage.removeItem('pc_assistant_lang')
-    }
     return (
       <ConfirmationScreen
         bookingId={bookingId}
@@ -340,6 +369,10 @@ export default function PathologyBooking() {
         t={t}
         showInstallPrompt={assistantMode}
         assistantStrings={a}
+        assistantMode={assistantMode}
+        assistantLangCode={assistantLangCode}
+        assistantSpeechLang={assistantSpeechLang}
+        odiaClips={odiaClips}
       />
     )
   }
@@ -368,6 +401,13 @@ export default function PathologyBooking() {
 
       <StepTracker steps={stepLabels} currentStep={visualStep} />
 
+      {assistantMode && announceKey && (
+        <div className="announce-bar">
+          <p>{a[announceKey]}</p>
+          <button type="button" onClick={() => playAnnouncement(announceKey)} aria-label="Repeat">🔊</button>
+        </div>
+      )}
+
       {step === STEP.PATIENT && (
         <PatientDetailsStep
           name={patientName} setName={setPatientName}
@@ -376,7 +416,8 @@ export default function PathologyBooking() {
           bloodGroup={patientBloodGroup} setBloodGroup={setPatientBloodGroup}
           t={t}
           assistantSpeechLang={assistantSpeechLang}
-          nameRef={patientNameRef} ageRef={patientAgeRef} genderRef={patientGenderRef}
+          nameRef={patientNameRef} ageRef={patientAgeRef} genderRef={patientGenderRef} bloodRef={patientBloodRef}
+          onCommit={commit}
         />
       )}
 
@@ -421,6 +462,7 @@ export default function PathologyBooking() {
           onTurnstileExpire={() => setTurnstileToken('')}
           assistantSpeechLang={assistantSpeechLang}
           nameRef={detailsNameRef} phoneRef={detailsPhoneRef}
+          onCommit={commit}
         />
       )}
 
@@ -510,9 +552,13 @@ function FooterButton({
   return null
 }
 
+function blurOnEnter(e) {
+  if (e.key === 'Enter') e.currentTarget.blur()
+}
+
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown']
 
-function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t, assistantSpeechLang, nameRef, ageRef, genderRef }) {
+function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t, assistantSpeechLang, nameRef, ageRef, genderRef, bloodRef, onCommit }) {
   return (
     <div className="details-step">
       <h2 className="section-title">{t('patientDetailsTitle')}</h2>
@@ -520,18 +566,30 @@ function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, blo
       <div className="field" ref={nameRef}>
         <label>{t('patientName')}</label>
         <div className="field__with-voice">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('fullNamePlaceholder')} />
-          <VoiceInputButton speechLang={assistantSpeechLang} onResult={setName} />
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => onCommit('patientName')}
+            onKeyDown={blurOnEnter}
+            enterKeyHint="next"
+            autoComplete="off"
+            placeholder={t('fullNamePlaceholder')}
+          />
+          <VoiceInputButton speechLang={assistantSpeechLang} onResult={(text) => { setName(text); onCommit('patientName') }} />
         </div>
       </div>
       <div className="field" ref={ageRef}>
         <label>{t('patientAge')}</label>
         <input
-          type="number"
-          min="0"
-          max="120"
+          type="text"
+          inputMode="numeric"
           value={age}
-          onChange={(e) => setAge(e.target.value.slice(0, 3))}
+          onChange={(e) => setAge(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 3))}
+          onBlur={() => onCommit('patientAge')}
+          onKeyDown={blurOnEnter}
+          enterKeyHint="done"
+          autoComplete="off"
           placeholder={t('patientAgePlaceholder')}
         />
       </div>
@@ -550,7 +608,7 @@ function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, blo
           ))}
         </div>
       </div>
-      <div className="field">
+      <div className="field" ref={bloodRef}>
         <label>{t('patientBloodGroup')}</label>
         <div className="pill-group">
           {BLOOD_GROUPS.map((bg) => (
@@ -929,24 +987,46 @@ function PaymentStep({ info, error, onRetry, bookingId, screenshotUrl, onScreens
   )
 }
 
-function DetailsStep({ name, setName, phone, setPhone, error, t, onTurnstileVerify, onTurnstileExpire, assistantSpeechLang, nameRef, phoneRef }) {
+function DetailsStep({ name, setName, phone, setPhone, error, t, onTurnstileVerify, onTurnstileExpire, assistantSpeechLang, nameRef, phoneRef, onCommit }) {
   function handlePhoneVoice(spokenText) {
-    const digits = spokenText.replace(/\D/g, '').slice(0, 10)
-    if (digits) setPhone(digits)
+    const digits = normalizeDigits(spokenText).replace(/\D/g, '').slice(0, 10)
+    if (digits) {
+      setPhone(digits)
+      onCommit('phone')
+    }
   }
   return (
     <div className="details-step">
       <div className="field" ref={nameRef}>
         <label>{t('fullName')}</label>
         <div className="field__with-voice">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('fullNamePlaceholder')} />
-          <VoiceInputButton speechLang={assistantSpeechLang} onResult={setName} />
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => onCommit('name')}
+            onKeyDown={blurOnEnter}
+            enterKeyHint="next"
+            autoComplete="off"
+            placeholder={t('fullNamePlaceholder')}
+          />
+          <VoiceInputButton speechLang={assistantSpeechLang} onResult={(text) => { setName(text); onCommit('name') }} />
         </div>
       </div>
       <div className="field" ref={phoneRef}>
         <label>{t('phoneNumber')}</label>
         <div className="field__with-voice">
-          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder={t('phonePlaceholder')} />
+          <input
+            type="tel"
+            inputMode="numeric"
+            value={phone}
+            onChange={(e) => setPhone(normalizeDigits(e.target.value).replace(/\D/g, '').slice(0, 10))}
+            onBlur={() => onCommit('phone')}
+            onKeyDown={blurOnEnter}
+            enterKeyHint="done"
+            autoComplete="off"
+            placeholder={t('phonePlaceholder')}
+          />
           <VoiceInputButton speechLang={assistantSpeechLang} onResult={handlePhoneVoice} />
         </div>
       </div>
@@ -957,9 +1037,27 @@ function DetailsStep({ name, setName, phone, setPhone, error, t, onTurnstileVeri
   )
 }
 
-function ConfirmationScreen({ bookingId, prescriptionUploadError, paymentInfo, paymentScreenshotUploaded, onHome, t, showInstallPrompt, assistantStrings }) {
+function ConfirmationScreen({
+  bookingId, prescriptionUploadError, paymentInfo, paymentScreenshotUploaded, onHome, t, showInstallPrompt, assistantStrings,
+  assistantMode, assistantLangCode, assistantSpeechLang, odiaClips,
+}) {
   const cardRef = useRef(null)
   const [saving, setSaving] = useState(false)
+
+  function announce() {
+    if (assistantLangCode === 'or') playClip(odiaClips?.bookingDone)
+    else speak(assistantStrings.bookingDone, assistantSpeechLang)
+  }
+
+  // Guided mode: say the right thing for THIS screen (booking confirmed,
+  // save a screenshot) — and make sure nothing from an earlier step is
+  // still playing. Stops again when leaving the page.
+  useEffect(() => {
+    if (!assistantMode) return
+    announce()
+    return () => stopSpeaking()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assistantMode, odiaClips])
 
   async function handleSave() {
     setSaving(true)
@@ -979,6 +1077,12 @@ function ConfirmationScreen({ bookingId, prescriptionUploadError, paymentInfo, p
 
   return (
     <div className="page confirmation-screen">
+      {assistantMode && (
+        <div className="announce-bar">
+          <p>{assistantStrings.bookingDone}</p>
+          <button type="button" onClick={announce} aria-label="Repeat">🔊</button>
+        </div>
+      )}
       <div className="confirmation-screen__card" ref={cardRef}>
         <div className="confirmation-screen__icon"><CheckIcon /></div>
         <h1>{t('bookingConfirmed')}</h1>
