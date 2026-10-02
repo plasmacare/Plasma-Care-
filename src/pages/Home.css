@@ -419,3 +419,5 @@
   color: var(--slate);
   text-decoration: underline;
 }
+
+.account-entry { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--navy-950); font-weight: 600; font-size: 0.85rem; text-decoration: none; }

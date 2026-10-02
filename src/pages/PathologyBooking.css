@@ -600,3 +600,17 @@
   cursor: pointer;
   flex-shrink: 0;
 }
+
+/* Saved patients (customer account) */
+.saved-patients { margin: 0 0 14px; }
+.saved-patients__label { display: block; font-size: 0.8rem; color: var(--slate); margin-bottom: 6px; }
+.saved-patients__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.saved-patients__chip {
+  border: 1px solid var(--navy-950);
+  background: #fff;
+  color: var(--navy-950);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}

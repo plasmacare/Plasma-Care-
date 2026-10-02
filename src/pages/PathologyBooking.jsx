@@ -11,8 +11,9 @@ import { getVerificationId } from '../lib/turnstile'
 import { useLanguage } from '../lib/i18n.jsx'
 import { ASSISTANT_LANGS, ASSISTANT_STRINGS } from '../lib/seniorAssistantStrings'
 import { speak, stopSpeaking, findBestMatch, parseSpokenDate, playClip } from '../lib/voiceAssistant'
-import { normalizeDigits } from '../lib/transliterate'
+import { normalizeDigits, toEnglish } from '../lib/transliterate'
 import { fetchVoiceClips } from '../lib/voiceClips'
+import { loadAccountPrefill, linkBookingToAccount, touchAccountActivity } from '../lib/customerAccounts'
 import {
   fetchPackages, fetchTests, createBooking, savePatientDetails,
   uploadPrescription, analyzePrescription, savePrescriptionAiResult, savePrescriptionUploadError,
@@ -66,6 +67,7 @@ export default function PathologyBooking() {
   const [prescriptionBusy, setPrescriptionBusy] = useState(false)
   const [aiResult, setAiResult] = useState(null)
   const [name, setName] = useState('')
+  const [savedPatients, setSavedPatients] = useState([]) // from the customer's account, if signed in
   const [phone, setPhone] = useState('')
   const [formError, setFormError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -120,6 +122,23 @@ export default function PathologyBooking() {
   const scheduleAreaRef = useRef(null)
   const detailsNameRef = useRef(null)
   const detailsPhoneRef = useRef(null)
+
+  // Moving through the booking counts as being active, so a signed-in
+  // customer isn't treated as idle halfway through filling this form.
+  useEffect(() => { touchAccountActivity() }, [step])
+
+  // Signed in to a customer account (and the feature is on)? Pre-fill the
+  // contact name/phone and offer saved patients. Silent no-op otherwise.
+  useEffect(() => {
+    let cancelled = false
+    loadAccountPrefill().then((prefill) => {
+      if (cancelled || !prefill) return
+      setSavedPatients(prefill.patients || [])
+      if (prefill.profile?.displayName) setName((n) => n || prefill.profile.displayName)
+      if (prefill.profile?.phone) setPhone((p) => p || prefill.profile.phone)
+    })
+    return () => { cancelled = true }
+  }, [])
 
   // A typed field only counts as "finished" once the person leaves it
   // (taps elsewhere / presses Done on the keyboard) — NOT on the first
@@ -329,6 +348,15 @@ export default function PathologyBooking() {
       }
       setBookingId(booking.id)
       setCreatedBooking(booking)
+      // Signed in to a customer account? Attach this booking to it
+      // (silent; a failure here never affects the booking).
+      linkBookingToAccount({
+        id: booking.id,
+        bookingType,
+        scheduledDate: formatLocalDate(date),
+        totalAmount: total,
+        patientName: toEnglish(patientName.trim()),
+      })
 
       if (paymentSettings?.enabled) {
         await attemptPaymentRequest(booking, paymentSettings)
@@ -418,6 +446,7 @@ export default function PathologyBooking() {
           assistantSpeechLang={assistantSpeechLang}
           nameRef={patientNameRef} ageRef={patientAgeRef} genderRef={patientGenderRef} bloodRef={patientBloodRef}
           onCommit={commit}
+          savedPatients={assistantMode ? [] : savedPatients}
         />
       )}
 
@@ -558,11 +587,31 @@ function blurOnEnter(e) {
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown']
 
-function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t, assistantSpeechLang, nameRef, ageRef, genderRef, bloodRef, onCommit }) {
+function PatientDetailsStep({ name, setName, age, setAge, gender, setGender, bloodGroup, setBloodGroup, t, assistantSpeechLang, nameRef, ageRef, genderRef, bloodRef, onCommit, savedPatients = [] }) {
+  function applySaved(p) {
+    setName(p.name || '')
+    setAge(p.age != null ? String(p.age) : '')
+    setGender(p.gender || '')
+    setBloodGroup(p.bloodGroup || '')
+    onCommit('patientName')
+    onCommit('patientAge')
+  }
   return (
     <div className="details-step">
       <h2 className="section-title">{t('patientDetailsTitle')}</h2>
       <p className="details-step__note">{t('patientDetailsNote')}</p>
+      {savedPatients.length > 0 && (
+        <div className="saved-patients">
+          <span className="saved-patients__label">Saved patients</span>
+          <div className="saved-patients__chips">
+            {savedPatients.map((p) => (
+              <button key={p.id} type="button" className="saved-patients__chip" onClick={() => applySaved(p)}>
+                {p.name}{p.relation ? ` · ${p.relation}` : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="field" ref={nameRef}>
         <label>{t('patientName')}</label>
         <div className="field__with-voice">

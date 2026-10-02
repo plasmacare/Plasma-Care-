@@ -7,6 +7,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import PortalMenu from '../components/PortalMenu'
 import AnnouncementPopup from '../components/AnnouncementPopup'
 import SeniorAssistantPrompt from '../components/SeniorAssistantPrompt'
+import AccountEntry from '../components/AccountEntry'
 import { useLanguage } from '../lib/i18n.jsx'
 import { fetchAvailableLegalPages } from '../lib/content'
 import { isSlowConnection } from '../lib/networkSpeed'
@@ -60,6 +61,7 @@ export default function Home() {
         </a>
       )}
       <div className="home__top-bar">
+        <AccountEntry />
         <PortalMenu />
         <LanguageSwitcher />
       </div>
