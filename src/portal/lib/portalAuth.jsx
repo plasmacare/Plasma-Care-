@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { logEvent } from '../../lib/telemetry'
+import IdleGuard, { clearIdleMarker } from '../../components/IdleGuard'
 
 const PortalAuthContext = createContext(null)
 
@@ -87,6 +88,13 @@ export function PortalAuthProvider({ children }) {
     evaluateMfa(r)
   }, [staffProfile, b2bAccount, evaluateMfa])
 
+  // Once we KNOW nobody is signed in (session === null, not "still
+  // checking"), forget the inactivity timestamp so a later fresh login
+  // never inherits an old one.
+  useEffect(() => {
+    if (session === null) clearIdleMarker('portal')
+  }, [session])
+
   async function login(email, password) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
@@ -97,7 +105,20 @@ export function PortalAuthProvider({ children }) {
   }
 
   async function logout() {
-    await supabase.auth.signOut()
+    clearIdleMarker('portal')
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // offline or server unreachable — still drop the local session
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+    }
+  }
+
+  // Bank-style inactivity sign-out for every portal login (staff, admin,
+  // developer, B2B): 15 minutes with no activity.
+  async function handleIdleTimeout() {
+    logEvent({ type: 'session_timeout', source: 'staff', message: 'Portal session signed out after inactivity' })
+    await logout()
   }
 
   async function refreshMfa() {
@@ -135,6 +156,7 @@ export function PortalAuthProvider({ children }) {
         logout,
       }}
     >
+      <IdleGuard enabled={!!session} timeoutMinutes={15} warnSeconds={60} scope="portal" persist="local" onTimeout={handleIdleTimeout} />
       {children}
     </PortalAuthContext.Provider>
   )
