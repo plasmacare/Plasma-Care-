@@ -4,6 +4,9 @@ import { fetchRecentLogs, fetchLogCounts, subscribeToLogs } from './devLogs'
 import { fetchMaintenanceSettings } from '../../../lib/maintenance'
 import { fetchSeniorAssistantEnabled, setSeniorAssistantEnabled } from '../../../lib/seniorAssistant'
 import { fetchCustomerAccountsEnabled, setCustomerAccountsEnabled } from '../../../lib/customerAccounts'
+import {
+  fetchPortalAutoLogout, savePortalAutoLogout, PORTAL_AUTO_LOGOUT_CHOICES, PORTAL_AUTO_LOGOUT_DEFAULT,
+} from '../../../lib/portalSecurity'
 import { supabase } from '../../../lib/supabase'
 import SeoTools from './SeoTools'
 import OdiaVoiceRecorder from './OdiaVoiceRecorder'
@@ -45,6 +48,10 @@ function FeatureFlagsView() {
   const [accounts, setAccounts] = useState(null)
   const [accountsBusy, setAccountsBusy] = useState(false)
   const [accountsError, setAccountsError] = useState('')
+  const [portalLogout, setPortalLogout] = useState(null)
+  const [portalLogoutBusy, setPortalLogoutBusy] = useState(false)
+  const [portalLogoutError, setPortalLogoutError] = useState('')
+  const [portalLogoutSaved, setPortalLogoutSaved] = useState(false)
   const [seniorAssistant, setSeniorAssistant] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -52,7 +59,26 @@ function FeatureFlagsView() {
   useEffect(() => {
     fetchSeniorAssistantEnabled().then(setSeniorAssistant)
     fetchCustomerAccountsEnabled().then(setAccounts)
+    fetchPortalAutoLogout().then(setPortalLogout).catch(() => setPortalLogout(PORTAL_AUTO_LOGOUT_DEFAULT))
   }, [])
+
+  async function changePortalLogout(patch) {
+    const previous = portalLogout
+    const next = { ...portalLogout, ...patch }
+    setPortalLogout(next) // optimistic
+    setPortalLogoutBusy(true)
+    setPortalLogoutError('')
+    setPortalLogoutSaved(false)
+    try {
+      await savePortalAutoLogout(next)
+      setPortalLogoutSaved(true)
+    } catch (err) {
+      setPortalLogout(previous)
+      setPortalLogoutError(err.message)
+    } finally {
+      setPortalLogoutBusy(false)
+    }
+  }
 
   async function toggleAccounts() {
     const next = !accounts
@@ -102,6 +128,44 @@ function FeatureFlagsView() {
           <input type="checkbox" checked={accounts} onChange={toggleAccounts} disabled={accountsBusy} />
           {accounts ? 'Enabled — "My Account" shows on the homepage' : 'Disabled — hidden from customers'}
         </label>
+      )}
+    </div>
+
+    <div className="slots-form-card">
+      <h3>Portal auto-logout</h3>
+      <p className="portal-form__hint" style={{ marginBottom: 12 }}>
+        Signs people out of the <strong>Staff, B2B, Admin and Developer</strong> panels after a period of
+        no activity (a 60-second warning appears first). Applies to everyone the next time their panel
+        loads. The customer "My Account" page always auto-logs-out after 10 minutes and is not affected
+        by this setting.
+      </p>
+      {portalLogoutError && <p className="admin-error">{portalLogoutError}</p>}
+      {portalLogout === null ? (
+        <p>Loading…</p>
+      ) : (
+        <>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <input
+              type="checkbox"
+              checked={portalLogout.enabled}
+              disabled={portalLogoutBusy}
+              onChange={(e) => changePortalLogout({ enabled: e.target.checked })}
+            />
+            {portalLogout.enabled ? 'On — idle sessions are signed out' : 'Off — panels stay signed in until someone logs out'}
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: portalLogout.enabled ? 1 : 0.5 }}>
+            Sign out after
+            <select
+              value={portalLogout.minutes}
+              disabled={portalLogoutBusy || !portalLogout.enabled}
+              onChange={(e) => changePortalLogout({ minutes: Number(e.target.value) })}
+            >
+              {PORTAL_AUTO_LOGOUT_CHOICES.map((m) => <option key={m} value={m}>{m} minutes</option>)}
+            </select>
+            of inactivity
+          </label>
+          {portalLogoutSaved && <p className="acct-success" style={{ color: 'var(--success, #1B8A5A)', marginTop: 8 }}>Saved.</p>}
+        </>
       )}
     </div>
 
