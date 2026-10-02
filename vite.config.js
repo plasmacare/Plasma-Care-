@@ -123,7 +123,9 @@ export default defineConfig(({ mode }) => {
       },
     }),
   ],
-  base: '/',
+  // GitHub Pages serves this site from /Plasma-Care-/, Vercel from the root.
+  // Vercel sets VERCEL=1 while building, so each host gets the right paths.
+  base: process.env.VERCEL ? '/' : '/Plasma-Care-/',
   build: {
     // Explicit on purpose: a source map would let anyone reconstruct
     // readable source from the minified production bundle. This is

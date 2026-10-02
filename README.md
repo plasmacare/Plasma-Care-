@@ -389,3 +389,8 @@ actually matters:
 ## Customer accounts (Firebase) + security hardening
 - Setup guide: `docs/FIREBASE_SETUP.md` · Security overview: `docs/SECURITY.md`
 - Run `supabase/customer_accounts_flag.sql`, publish `firebase/firestore.rules`, add the `VITE_FIREBASE_*` variables (see `.env.example`), `npm install`, deploy, then switch on in Developer panel → Settings → Customer Accounts.
+
+## Vercel hosting + security headers
+- `vercel.json` sends real security headers (HSTS, no-framing, nosniff, Permissions-Policy, COOP…). `vite.config.js` uses base `/` on Vercel and `/Plasma-Care-/` on GitHub Pages automatically.
+- Run `supabase/portal_auto_logout.sql`; then Developer panel → Settings → **Portal auto-logout** controls the Staff/B2B/Admin/Developer inactivity sign-out. Customer account auto-logout stays always on.
+- Full list of dashboard settings to switch on: `docs/SECURITY.md`.
