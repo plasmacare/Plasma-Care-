@@ -1,0 +1,123 @@
+rules_version = '2';
+
+// Customer accounts — paste this whole file into
+// Firebase console -> Firestore Database -> Rules -> Publish.
+//
+// What it enforces:
+//  * Only a signed-in customer whose email is VERIFIED can read/write,
+//    and only inside their own users/{their-uid}/... tree.
+//  * Every field is whitelisted, type-checked and length-limited, so the
+//    database can't be stuffed with junk or huge documents.
+//  * createdAt can't be rewritten; timestamps come from the server.
+//  * Everything else (any other path) is denied.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function verifiedUser() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function owns(uid) {
+      return verifiedUser() && request.auth.uid == uid;
+    }
+    function maxStr(v, n) {
+      return v is string && v.size() <= n;
+    }
+    function nameStr(v, n) {
+      return v is string && v.size() >= 1 && v.size() <= n;
+    }
+
+    // ---------------------------------------------------------- profile
+    function validProfile(d) {
+      return d.keys().hasOnly(['displayName', 'phone', 'createdAt', 'updatedAt'])
+        && d.keys().hasAll(['displayName', 'createdAt', 'updatedAt'])
+        && maxStr(d.displayName, 80)
+        && (!('phone' in d) || (d.phone is string && d.phone.matches('^[0-9]{0,10}$')))
+        && d.createdAt is timestamp
+        && d.updatedAt == request.time;
+    }
+
+    match /users/{uid} {
+      allow read: if owns(uid);
+      allow create: if owns(uid)
+        && validProfile(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update: if owns(uid)
+        && validProfile(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if owns(uid);
+
+      // ------------------------------------------------------ patients
+      function validPatient(d) {
+        return d.keys().hasOnly(['name', 'age', 'gender', 'bloodGroup', 'relation', 'createdAt', 'updatedAt'])
+          && d.keys().hasAll(['name', 'gender', 'bloodGroup', 'relation', 'createdAt', 'updatedAt'])
+          && nameStr(d.name, 80)
+          && (!('age' in d) || (d.age is int && d.age >= 0 && d.age <= 120))
+          && d.gender in ['', 'male', 'female', 'other']
+          && d.bloodGroup in ['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown']
+          && maxStr(d.relation, 30)
+          && d.createdAt is timestamp
+          && d.updatedAt == request.time;
+      }
+
+      match /patients/{pid} {
+        allow read: if owns(uid);
+        allow create: if owns(uid)
+          && validPatient(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+        allow update: if owns(uid)
+          && validPatient(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if owns(uid);
+      }
+
+      // ----------------------------------------------------- addresses
+      function validAddress(d) {
+        return d.keys().hasOnly(['label', 'fullAddress', 'landmark', 'createdAt', 'updatedAt'])
+          && d.keys().hasAll(['label', 'fullAddress', 'landmark', 'createdAt', 'updatedAt'])
+          && maxStr(d.label, 40)
+          && nameStr(d.fullAddress, 300)
+          && maxStr(d.landmark, 120)
+          && d.createdAt is timestamp
+          && d.updatedAt == request.time;
+      }
+
+      match /addresses/{aid} {
+        allow read: if owns(uid);
+        allow create: if owns(uid)
+          && validAddress(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+        allow update: if owns(uid)
+          && validAddress(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if owns(uid);
+      }
+
+      // ------------------------------------------- linked bookings
+      // Only a pointer + a few display fields. Live status and the
+      // report link are always read from Supabase, not stored here.
+      function validBookingLink(d, bid) {
+        return d.keys().hasOnly(['bookingId', 'bookingType', 'scheduledDate', 'totalAmount', 'patientName', 'linkedAt'])
+          && d.keys().hasAll(['bookingId', 'bookingType', 'scheduledDate', 'totalAmount', 'linkedAt'])
+          && d.bookingId == bid
+          && bid.matches('^[0-9a-fA-F-]{36}$')
+          && d.bookingType in ['', 'home_collection', 'lab_visit']
+          && maxStr(d.scheduledDate, 10)
+          && d.totalAmount is number && d.totalAmount >= 0 && d.totalAmount <= 10000000
+          && (!('patientName' in d) || maxStr(d.patientName, 80))
+          && d.linkedAt == request.time;
+      }
+
+      match /bookings/{bid} {
+        allow read: if owns(uid);
+        allow create: if owns(uid) && validBookingLink(request.resource.data, bid);
+        allow update: if false;
+        allow delete: if owns(uid);
+      }
+    }
+
+    // Anything not matched above is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
