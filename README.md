@@ -385,3 +385,7 @@ actually matters:
 - "New feature ticker" moved to Developer panel > Feature Ticker.
 - Admin "Views" tab is now **Analytics** (internal tab key unchanged so access settings still work) with a new **Customers** section (home/lab visits, successful bookings, genuine score — for both bookers and patients).
 - Odia Voice: record **or upload** an audio file per phrase. New phrases to record: `stepBloodGroup`, `stepPayment`, `bookingDone` (plus `stepLocation`, which is now used).
+
+## Customer accounts (Firebase) + security hardening
+- Setup guide: `docs/FIREBASE_SETUP.md` · Security overview: `docs/SECURITY.md`
+- Run `supabase/customer_accounts_flag.sql`, publish `firebase/firestore.rules`, add the `VITE_FIREBASE_*` variables (see `.env.example`), `npm install`, deploy, then switch on in Developer panel → Settings → Customer Accounts.

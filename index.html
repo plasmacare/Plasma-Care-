@@ -2,6 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Anti-clickjacking: if this page is ever loaded inside someone
+         else's frame, it stays hidden and tries to break out. (A real
+         X-Frame-Options / frame-ancestors header would be stronger, but
+         GitHub Pages can't set headers — see docs/SECURITY.md.) -->
+    <style id="pc-antiframe">html { display: none !important; }</style>
+    <script>
+      if (window.top === window.self) {
+        var pcFrameStyle = document.getElementById('pc-antiframe')
+        if (pcFrameStyle && pcFrameStyle.parentNode) pcFrameStyle.parentNode.removeChild(pcFrameStyle)
+      } else {
+        try { window.top.location = window.self.location } catch (e) { /* stays hidden */ }
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0B2545" />
     <!-- viewport-fit=cover + the safe-area padding in tokens.css keep
