@@ -3,6 +3,7 @@ import { usePortalAuth } from '../../lib/portalAuth.jsx'
 import { fetchRecentLogs, fetchLogCounts, subscribeToLogs } from './devLogs'
 import { fetchMaintenanceSettings } from '../../../lib/maintenance'
 import { fetchSeniorAssistantEnabled, setSeniorAssistantEnabled } from '../../../lib/seniorAssistant'
+import { fetchCustomerAccountsEnabled, setCustomerAccountsEnabled } from '../../../lib/customerAccounts'
 import { supabase } from '../../../lib/supabase'
 import SeoTools from './SeoTools'
 import OdiaVoiceRecorder from './OdiaVoiceRecorder'
@@ -41,13 +42,32 @@ export default function DevPulse() {
 }
 
 function FeatureFlagsView() {
+  const [accounts, setAccounts] = useState(null)
+  const [accountsBusy, setAccountsBusy] = useState(false)
+  const [accountsError, setAccountsError] = useState('')
   const [seniorAssistant, setSeniorAssistant] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     fetchSeniorAssistantEnabled().then(setSeniorAssistant)
+    fetchCustomerAccountsEnabled().then(setAccounts)
   }, [])
+
+  async function toggleAccounts() {
+    const next = !accounts
+    setAccounts(next) // optimistic
+    setAccountsBusy(true)
+    setAccountsError('')
+    try {
+      await setCustomerAccountsEnabled(next)
+    } catch (err) {
+      setAccounts(!next)
+      setAccountsError(err.message)
+    } finally {
+      setAccountsBusy(false)
+    }
+  }
 
   async function toggle() {
     const next = !seniorAssistant
@@ -65,6 +85,26 @@ function FeatureFlagsView() {
   }
 
   return (
+    <>
+    <div className="slots-form-card">
+      <h3>Customer Accounts (Firebase)</h3>
+      <p className="portal-form__hint" style={{ marginBottom: 12 }}>
+        Customer "My Account" page: sign in with email or Google, saved patients and addresses, booking
+        history and reports. Data is stored in Firebase (free plan); bookings and reports stay in Supabase and
+        Cloudinary. When off, the button and the /account page are hidden from customers. Turn on only after
+        the Firebase setup in docs/FIREBASE_SETUP.md is done.
+      </p>
+      {accountsError && <p className="admin-error">{accountsError}</p>}
+      {accounts === null ? (
+        <p>Loading…</p>
+      ) : (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input type="checkbox" checked={accounts} onChange={toggleAccounts} disabled={accountsBusy} />
+          {accounts ? 'Enabled — "My Account" shows on the homepage' : 'Disabled — hidden from customers'}
+        </label>
+      )}
+    </div>
+
     <div className="slots-form-card">
       <h3>Senior Citizen Assistant</h3>
       <p className="portal-form__hint" style={{ marginBottom: 12 }}>
@@ -82,6 +122,7 @@ function FeatureFlagsView() {
         </label>
       )}
     </div>
+    </>
   )
 }
 
