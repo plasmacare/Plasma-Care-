@@ -15,6 +15,10 @@ import { fetchMaintenanceSettings, subscribeMaintenanceSettings } from './lib/ma
 // the booking site never downloads any of this code.
 const PortalRoutes = lazy(() => import('./portal/PortalRoutes'))
 
+// Customer account page (Firebase) — also lazy, so the Firebase SDK is
+// only downloaded by customers who actually open /account.
+const AccountRoute = lazy(() => import('./account/AccountRoute'))
+
 export default function App() {
   const location = useLocation()
   const isPortalRoute = location.pathname.startsWith('/portal')
@@ -51,6 +55,14 @@ export default function App() {
         <Route path="/pages/:slug" element={<LegalPage />} />
         <Route path="/pay/:bookingId" element={<PaymentStatus />} />
         <Route path="/report/:bookingId" element={<ReportView />} />
+        <Route
+          path="/account"
+          element={
+            <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>Loading…</div>}>
+              <AccountRoute />
+            </Suspense>
+          }
+        />
         <Route
           path="/portal/*"
           element={
