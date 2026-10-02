@@ -28,7 +28,8 @@ your data is steps 4–6 below.)
 - **Google** → enable, choose a support email.
 
 **Authentication → Settings**
-- **Authorized domains** → add your site's domain (e.g. `yourname.github.io`). `localhost` is there already.
+- **Authorized domains** → add EVERY address the site is served from, e.g. `plasma-care.vercel.app` and
+  your `yourname.github.io`. (If a domain is missing, Google sign-in fails there.) `localhost` is there already.
 - **User actions** → tick **Enable email enumeration protection** (stops attackers discovering which emails are registered).
 - **Password policy** → require min length 10 + upper, lower, number, symbol, and **Enforce**.
 
@@ -54,7 +55,17 @@ email, with every field type-checked and length-limited.
    **Cloud Firestore** and **Authentication**. (Enforce only after the site key is live, otherwise the
    account page stops working.)
 
-## 6. Install + deploy
+## 6. Add the variables where the site is BUILT  ← why the page says "being set up"
+The `VITE_FIREBASE_*` values are baked into the site when it is built. If they are missing, `/account`
+shows "Customer accounts are being set up". Add them to **each place you deploy from**, then redeploy:
+- **Vercel**: Project → Settings → Environment Variables → add all 7 `VITE_FIREBASE_*` names (Production,
+  Preview) → Deployments → ⋯ → **Redeploy**.
+- **GitHub Pages**: Repo → Settings → Secrets and variables → Actions → New repository secret, same 7 names
+  (`.github/workflows/deploy.yml` already passes them to the build) → re-run the workflow.
+- reCAPTCHA (step 5): add `plasma-care.vercel.app` (and the github.io domain if used) to the key's domain list.
+- Supabase → Authentication → URL configuration: make sure the Vercel address is an allowed redirect URL.
+
+## 6b. Install + deploy
 ```
 npm install      # adds the firebase package
 npm run build
