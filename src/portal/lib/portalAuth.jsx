@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { supabase } from '../../lib/supabase'
 import { logEvent } from '../../lib/telemetry'
 import IdleGuard, { clearIdleMarker } from '../../components/IdleGuard'
+import {
+  fetchPortalAutoLogout, PORTAL_AUTO_LOGOUT_DEFAULT, PORTAL_SECURITY_EVENT, clearPortalOfflineCaches,
+} from '../../lib/portalSecurity'
 
 const PortalAuthContext = createContext(null)
 
@@ -17,6 +20,7 @@ export function PortalAuthProvider({ children }) {
   const [staffProfile, setStaffProfile] = useState(undefined) // undefined=checking, null=not staff
   const [b2bAccount, setB2bAccount] = useState(undefined)
   const [mfaState, setMfaState] = useState('checking')
+  const [autoLogout, setAutoLogout] = useState(PORTAL_AUTO_LOGOUT_DEFAULT) // set from Developer panel -> Settings
   // 'checking' | 'not_required' | 'needs_enroll' | 'needs_challenge' | 'satisfied'
 
   // b2b_accounts takes priority on purpose: the only way that row
@@ -95,7 +99,27 @@ export function PortalAuthProvider({ children }) {
     if (session === null) clearIdleMarker('portal')
   }, [session])
 
+  // Developer-controlled auto-logout setting: load once signed in, and
+  // re-load whenever the Developer panel saves a change in this browser.
+  const signedInUserId = session?.user?.id
+  useEffect(() => {
+    if (!signedInUserId) return undefined
+    let cancelled = false
+    const load = () => fetchPortalAutoLogout().then((v) => { if (!cancelled) setAutoLogout(v) })
+    load()
+    window.addEventListener(PORTAL_SECURITY_EVENT, load)
+    return () => { cancelled = true; window.removeEventListener(PORTAL_SECURITY_EVENT, load) }
+  }, [signedInUserId])
+
+  // While auto-logout is switched off, drop the stored activity time so
+  // that switching it back on later doesn't sign people out instantly.
+  useEffect(() => {
+    if (!autoLogout.enabled) clearIdleMarker('portal')
+  }, [autoLogout.enabled])
+
   async function login(email, password) {
+    // never let a previous person's cached lists show up for this login
+    await clearPortalOfflineCaches()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       logEvent({ type: 'login_failed', source: 'staff', severity: 'warning', message: `Login failed for ${email}` })
@@ -106,6 +130,7 @@ export function PortalAuthProvider({ children }) {
 
   async function logout() {
     clearIdleMarker('portal')
+    clearPortalOfflineCaches()
     try {
       await supabase.auth.signOut()
     } catch {
@@ -115,7 +140,8 @@ export function PortalAuthProvider({ children }) {
   }
 
   // Bank-style inactivity sign-out for every portal login (staff, admin,
-  // developer, B2B): 15 minutes with no activity.
+  // developer, B2B). On/off and the number of minutes are set in
+  // Developer panel -> Settings; defaults to on / 15 minutes.
   async function handleIdleTimeout() {
     logEvent({ type: 'session_timeout', source: 'staff', message: 'Portal session signed out after inactivity' })
     await logout()
@@ -156,7 +182,7 @@ export function PortalAuthProvider({ children }) {
         logout,
       }}
     >
-      <IdleGuard enabled={!!session} timeoutMinutes={15} warnSeconds={60} scope="portal" persist="local" onTimeout={handleIdleTimeout} />
+      <IdleGuard enabled={!!session && autoLogout.enabled} timeoutMinutes={autoLogout.minutes} warnSeconds={60} scope="portal" persist="local" onTimeout={handleIdleTimeout} />
       {children}
     </PortalAuthContext.Provider>
   )
