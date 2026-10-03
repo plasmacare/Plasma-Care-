@@ -206,3 +206,26 @@ p, span, li, td, th, h1, h2, h3, h4, h5, h6, label, pre, code {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* ---------- Customer pages: no text selection at all (panels unchanged) ----------
+   The block above lets paragraph/heading text be selected so people can
+   copy order IDs etc. On customer pages that is now switched off (see
+   src/lib/copyGuard.js); form fields stay selectable so typing and
+   pasting keep working. <html data-ui="flat"> = staff/admin panels,
+   which keep the original behaviour. */
+html:not([data-ui="flat"]) * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html:not([data-ui="flat"]) input,
+html:not([data-ui="flat"]) textarea,
+html:not([data-ui="flat"]) [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+html:not([data-ui="flat"]) img,
+html:not([data-ui="flat"]) a {
+  -webkit-user-drag: none;
+}
