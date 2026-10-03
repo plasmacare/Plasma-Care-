@@ -1,0 +1,95 @@
+/* ====================================================================
+   PANELS (admin, staff, B2B, developer, login screens) — Flat design
+   No shadows, no gradients, no hover lifts. Solid colours, thin 1px
+   borders, tight radii, one calm blue accent (like the reference
+   dashboard). Information is separated by space and borders, not depth.
+   Only applies while <html data-ui="flat"> (any /portal/... page).
+   Errors/danger keep their red; "completed/active" keep green.
+   ==================================================================== */
+html[data-ui="flat"] {
+  --flat-blue: #2F66C8;
+  --flat-blue-dark: #2556AB;
+  --flat-blue-50: #EAF1FC;
+  --flat-bg: #F1F4F9;
+  --flat-line: #DDE3EC;
+
+  --paper: var(--flat-bg);
+  --line: var(--flat-line);
+  --shadow-card: none;
+  --shadow-raised: none;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+}
+html[data-ui="flat"] body { background: var(--flat-bg); }
+html[data-ui="flat"] *,
+html[data-ui="flat"] *::before,
+html[data-ui="flat"] *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+/* overlays still need to read as separate layers: a border instead of a shadow */
+html[data-ui="flat"] .idle-guard__box,
+html[data-ui="flat"] .admin-tabs-menu__drawer,
+html[data-ui="flat"] .notif-banner { border: 1px solid var(--flat-line); }
+
+/* ---- buttons: solid, no lift ---- */
+html[data-ui="flat"] .btn { border-radius: 6px; transition: background-color 0.15s ease; }
+html[data-ui="flat"] .btn:active { transform: none; }
+html[data-ui="flat"] .btn--primary { background: var(--flat-blue); color: #fff; }
+html[data-ui="flat"] .btn--primary:hover:not(:disabled) { background: var(--flat-blue-dark); }
+html[data-ui="flat"] .btn--secondary { background: var(--flat-blue-50); color: var(--flat-blue-dark); }
+html[data-ui="flat"] .btn--outline { border: 1px solid var(--flat-line); }
+
+/* ---- cards & panels: white, thin border, nothing else ---- */
+html[data-ui="flat"] .card,
+html[data-ui="flat"] .portal-card,
+html[data-ui="flat"] .login-card,
+html[data-ui="flat"] .stat-card,
+html[data-ui="flat"] .booking-card,
+html[data-ui="flat"] .catalog-card,
+html[data-ui="flat"] .announcement-row,
+html[data-ui="flat"] .pages-tab__card,
+html[data-ui="flat"] .ai-package-card,
+html[data-ui="flat"] .slots-form-card,
+html[data-ui="flat"] .b2b-stat,
+html[data-ui="flat"] .b2b-history-card,
+html[data-ui="flat"] .b2b-patient-card,
+html[data-ui="flat"] .b2b-add-box,
+html[data-ui="flat"] .account-card,
+html[data-ui="flat"] .customer-stat {
+  background: #fff;
+  border: 1px solid var(--flat-line);
+  border-radius: 8px;
+}
+html[data-ui="flat"] .customer-stat { background: #F7F9FC; }
+html[data-ui="flat"] .booking-card { border-left-width: 3px; }
+
+/* ---- header + navigation: like the reference's blue nav ---- */
+html[data-ui="flat"] .admin-header,
+html[data-ui="flat"] .b2b-header { background: #fff; border-bottom: 1px solid var(--flat-line); }
+html[data-ui="flat"] .admin-tabs__btn { color: #5A6578; border-radius: 0; }
+html[data-ui="flat"] .admin-tabs__btn--active { color: var(--flat-blue); border-bottom-color: var(--flat-blue); }
+html[data-ui="flat"] .admin-tabs-menu__item--active { background: var(--flat-blue); color: #fff; }
+html[data-ui="flat"] .b2b-nav a { border-radius: 6px; }
+html[data-ui="flat"] .b2b-nav a.active { background: var(--flat-blue); color: #fff; }
+html[data-ui="flat"] .catalog__switch button.is-active,
+html[data-ui="flat"] .collections-subnav button.active { background: var(--flat-blue); color: #fff; }
+
+/* ---- inputs: plain boxes with a blue focus line ---- */
+html[data-ui="flat"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-ui="flat"] select,
+html[data-ui="flat"] textarea { border-radius: 6px; border: 1px solid var(--flat-line); background-color: #fff; }
+html[data-ui="flat"] input:focus,
+html[data-ui="flat"] select:focus,
+html[data-ui="flat"] textarea:focus { border-color: var(--flat-blue); outline: none; }
+html[data-ui="flat"] :focus-visible { outline: 2px solid var(--flat-blue); outline-offset: 1px; }
+
+/* ---- small status chips: flat pills ---- */
+html[data-ui="flat"] .badge,
+html[data-ui="flat"] .score-pill,
+html[data-ui="flat"] .help-badge { border-radius: 4px; }
+
+/* ---- toggles / progress: solid colour, no glow ---- */
+html[data-ui="flat"] .notif-toggle__switch--on { background: var(--flat-blue); }
+html[data-ui="flat"] .site-bg { display: none; }
