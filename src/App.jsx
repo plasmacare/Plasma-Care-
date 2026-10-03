@@ -7,6 +7,7 @@ import PaymentStatus from './pages/PaymentStatus'
 import ReportView from './pages/ReportView'
 import LiteBooking from './pages/LiteBooking'
 import SiteBackground from './components/SiteBackground'
+import UiTheme from './components/UiTheme'
 import Analytics from './components/Analytics'
 import MaintenanceScreen from './components/MaintenanceScreen'
 import { fetchMaintenanceSettings, subscribeMaintenanceSettings } from './lib/maintenance'
@@ -38,6 +39,7 @@ export default function App() {
 
   return (
     <>
+      <UiTheme />
       {/* Skip the decorative background and analytics entirely on the
           lite page — the whole point of it is minimal weight on a slow
           connection. */}
