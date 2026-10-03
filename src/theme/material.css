@@ -1,0 +1,216 @@
+/* ====================================================================
+   CUSTOMER PAGES (booking, payment, report, account, legal, lite) —
+   Material Design
+   Layered surfaces with elevation shadows, a coloured top app bar, a
+   bottom app bar with a prominent action button, outlined text fields
+   with a clear focus state, uppercase "contained" buttons, and sans-serif
+   type. Brand colours are kept: navy = primary (app bar), red = accent.
+   Only applies while <html data-ui="material"> (every customer page
+   except the homepage, which is neumorphic).
+   ==================================================================== */
+html[data-ui="material"] {
+  --md-primary: #0B2545;
+  --md-accent: #C0152F;
+  --md-surface: #FFFFFF;
+  --md-background: #F4F5F9;
+  /* Material elevation levels (dp) */
+  --md-elev-1: 0 1px 2px rgba(0, 0, 0, 0.30), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-elev-2: 0 1px 2px rgba(0, 0, 0, 0.30), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-elev-3: 0 1px 3px rgba(0, 0, 0, 0.30), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+  --md-elev-4: 0 2px 3px rgba(0, 0, 0, 0.30), 0 6px 10px 4px rgba(0, 0, 0, 0.15);
+
+  --paper: var(--md-background);
+  --shadow-card: var(--md-elev-1);
+  --shadow-raised: var(--md-elev-3);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+html[data-ui="material"] body { background: var(--md-background); }
+html[data-ui="material"] .site-bg { opacity: 0.55; }
+
+/* Material uses a clean sans-serif for titles, not the editorial serif */
+html[data-ui="material"] h1,
+html[data-ui="material"] h2,
+html[data-ui="material"] h3 { font-family: var(--font-body); letter-spacing: 0; }
+
+/* ---- top app bar ---- */
+html[data-ui="material"] .page-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: -20px -20px 20px;
+  padding: 10px 12px 10px 8px;
+  min-height: 56px;
+  background: var(--md-primary);
+  color: #fff;
+  box-shadow: var(--md-elev-2);
+  gap: 8px;
+}
+html[data-ui="material"] .page-header h1 {
+  font-size: 20px;
+  font-weight: 500;
+  color: #fff;
+}
+html[data-ui="material"] .page-header__back {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+}
+html[data-ui="material"] .page-header__back:active { background: rgba(255, 255, 255, 0.2); }
+html[data-ui="material"] .page-header__back svg,
+html[data-ui="material"] .page-header__back svg * { stroke: #fff; }
+
+/* ---- cards: white surface, elevation 1, no outline ---- */
+html[data-ui="material"] .card,
+html[data-ui="material"] .item-row,
+html[data-ui="material"] .package-card,
+html[data-ui="material"] .type-card,
+html[data-ui="material"] .confirmation-screen__card,
+html[data-ui="material"] .payment-step,
+html[data-ui="material"] .acct-card,
+html[data-ui="material"] .acct-booking,
+html[data-ui="material"] .saved-patients__chip,
+html[data-ui="material"] .legal-page__body {
+  background: var(--md-surface);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: var(--md-elev-1);
+}
+html[data-ui="material"] .type-card:active,
+html[data-ui="material"] .package-card:active { box-shadow: var(--md-elev-3); }
+/* selected cards: keep the existing accent border + tint, add stronger elevation */
+html[data-ui="material"] .item-row.is-selected,
+html[data-ui="material"] .package-card.is-selected,
+html[data-ui="material"] .type-card.is-selected { box-shadow: var(--md-elev-2); border-color: var(--red-600); }
+
+/* ---- buttons ---- */
+html[data-ui="material"] .btn {
+  border-radius: 20px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+html[data-ui="material"] .btn--primary {
+  background: var(--md-accent);
+  box-shadow: var(--md-elev-2);
+}
+html[data-ui="material"] .btn--primary:hover:not(:disabled) { box-shadow: var(--md-elev-3); }
+html[data-ui="material"] .btn--primary:active:not(:disabled) { box-shadow: var(--md-elev-1); filter: brightness(0.92); transform: none; }
+html[data-ui="material"] .btn--secondary {
+  background: #E8EDF5;
+  color: var(--md-primary);
+  box-shadow: none;
+}
+html[data-ui="material"] .btn--secondary:active:not(:disabled) { background: #D8E0EE; transform: none; }
+html[data-ui="material"] .btn--outline {
+  border: 1px solid #79747E;
+  color: var(--md-primary);
+}
+html[data-ui="material"] .btn--ghost {
+  color: var(--md-primary);
+  font-weight: 600;
+}
+html[data-ui="material"] .btn--ghost:active:not(:disabled) { background: rgba(11, 37, 69, 0.1); transform: none; }
+html[data-ui="material"] .btn:disabled { opacity: 1; background: rgba(16, 24, 38, 0.12); color: rgba(16, 24, 38, 0.38); box-shadow: none; }
+
+/* ---- bottom app bar + extended action button ---- */
+html[data-ui="material"] .sticky-footer {
+  background: var(--md-surface);
+  border-top: none;
+  box-shadow: 0 -2px 6px 1px rgba(0, 0, 0, 0.15), 0 -1px 2px rgba(0, 0, 0, 0.2);
+}
+html[data-ui="material"] .sticky-footer .btn--primary {
+  border-radius: 16px;
+  min-height: 52px;
+  padding-left: 24px;
+  padding-right: 24px;
+  box-shadow: var(--md-elev-3);
+}
+
+/* ---- text fields: outlined, 4px-style corners, 2px focus ---- */
+html[data-ui="material"] .field label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  color: #49454F;
+}
+html[data-ui="material"] .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html[data-ui="material"] .field select,
+html[data-ui="material"] .field textarea,
+html[data-ui="material"] .search-bar input {
+  border: 1px solid #79747E;
+  border-radius: 8px;
+  background-color: #fff;
+  padding: 13px 14px;
+}
+html[data-ui="material"] .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+html[data-ui="material"] .field select:focus,
+html[data-ui="material"] .field textarea:focus,
+html[data-ui="material"] .search-bar input:focus {
+  border-color: var(--md-primary);
+  box-shadow: 0 0 0 1px var(--md-primary);
+  outline: none;
+}
+
+/* ---- chips / pills ---- */
+html[data-ui="material"] .pill,
+html[data-ui="material"] .slot-chip,
+html[data-ui="material"] .day-chip,
+html[data-ui="material"] .acct-pill {
+  border-radius: 8px;
+  border: 1px solid #79747E;
+  box-shadow: none;
+}
+html[data-ui="material"] .day-chip.is-selected,
+html[data-ui="material"] .slot-chip.is-selected,
+html[data-ui="material"] .pill.is-selected,
+html[data-ui="material"] .acct-pill.is-selected { box-shadow: var(--md-elev-1); }
+
+/* ---- tabs (account page): underline indicator like Material tabs ---- */
+html[data-ui="material"] .acct-tabs {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  gap: 0;
+  border-bottom: 1px solid #CAC4D0;
+}
+html[data-ui="material"] .acct-tabs button {
+  border-radius: 0;
+  background: transparent;
+  color: #49454F;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 14px 14px 12px;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+html[data-ui="material"] .acct-tabs button.is-active {
+  background: transparent;
+  box-shadow: none;
+  color: var(--md-accent);
+  border-bottom-color: var(--md-accent);
+}
+html[data-ui="material"] .acct-link { color: var(--md-primary); text-transform: none; }
+html[data-ui="material"] .acct-link--danger { color: var(--red-600); }
+
+/* ---- dialogs, banners, sheets: elevation 3, rounded 28px like Material 3 dialogs ---- */
+html[data-ui="material"] .idle-guard__box,
+html[data-ui="material"] .announcement-card,
+html[data-ui="material"] .install-app-prompt,
+html[data-ui="material"] .senior-prompt-card {
+  border-radius: 28px;
+  box-shadow: var(--md-elev-3);
+  border: none;
+}
+html[data-ui="material"] .announce-bar { border-radius: 12px; box-shadow: var(--md-elev-2); }
+html[data-ui="material"] .assistant-bar { box-shadow: var(--md-elev-2); }
+
+/* ---- snackbar-style messages ---- */
+html[data-ui="material"] .acct-notice,
+html[data-ui="material"] .confirmation-screen__warning { border-radius: 8px; }

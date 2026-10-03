@@ -1,0 +1,154 @@
+/* ====================================================================
+   HOMEPAGE — Neumorphism ("soft UI")
+   Everything sits on ONE soft surface colour and is "pushed out" of it
+   (raised: light shadow top-left + dark shadow bottom-right) or "pressed
+   into" it (inset). Tapping a raised thing flips it to inset, which
+   feels like pressing a physical button.
+   Only applies while <html data-ui="neumorphic"> (the homepage).
+   Accessibility choices: text stays dark navy/slate on a light surface
+   (never light-on-light), the red accent is kept for calls to action, and
+   the busy animated backdrop is hidden because soft shadows only read
+   well on a calm, uniform background.
+   ==================================================================== */
+html[data-ui="neumorphic"] {
+  --neu-bg: #E6EBF3;
+  --neu-light: #FFFFFF;
+  --neu-dark: #B9C4D8;
+  --neu-raised: 8px 8px 18px var(--neu-dark), -8px -8px 18px var(--neu-light);
+  --neu-raised-sm: 5px 5px 11px var(--neu-dark), -5px -5px 11px var(--neu-light);
+  --neu-inset: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+
+  --paper: var(--neu-bg);
+  --surface: var(--neu-bg);
+  --navy-100: var(--neu-bg);
+  --line: transparent;
+  --slate: #465466;
+  --shadow-card: var(--neu-raised-sm);
+  --shadow-raised: var(--neu-raised);
+}
+html[data-ui="neumorphic"] body { background: var(--neu-bg); }
+html[data-ui="neumorphic"] .site-bg { display: none; }
+html[data-ui="neumorphic"] .hero-bg__glow { display: none; }
+
+/* ---- main service card ---- */
+html[data-ui="neumorphic"] .service-card {
+  background: var(--neu-bg);
+  border: none;
+  border-radius: 26px;
+  padding: 22px;
+  box-shadow: var(--neu-raised);
+}
+html[data-ui="neumorphic"] .service-card--live:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--neu-raised);
+  border-color: transparent;
+}
+html[data-ui="neumorphic"] .service-card--live:active {
+  transform: none;
+  box-shadow: var(--neu-inset);
+}
+html[data-ui="neumorphic"] .service-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--neu-bg);
+  box-shadow: var(--neu-inset);
+}
+html[data-ui="neumorphic"] .service-card__cta {
+  background: var(--neu-bg);
+  box-shadow: var(--neu-raised-sm);
+  border-radius: 999px;
+  padding: 7px 14px;
+}
+
+/* ---- smaller service chips ---- */
+html[data-ui="neumorphic"] .service-chip {
+  background: var(--neu-bg);
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--neu-raised-sm);
+}
+html[data-ui="neumorphic"] .service-chip:active { box-shadow: var(--neu-inset); }
+
+/* ---- "why choose us" cards ---- */
+html[data-ui="neumorphic"] .why-card {
+  background: var(--neu-bg);
+  border: none;
+  border-radius: 20px;
+  box-shadow: var(--neu-raised-sm);
+}
+html[data-ui="neumorphic"] .why-card:hover { transform: none; box-shadow: var(--neu-raised-sm); }
+html[data-ui="neumorphic"] .why-card__icon {
+  background: var(--neu-bg);
+  box-shadow: var(--neu-inset);
+  border-radius: 50%;
+}
+
+/* ---- contact rows + bottom sheet ---- */
+html[data-ui="neumorphic"] .contact-row {
+  background: var(--neu-bg);
+  border: none;
+  border-radius: 18px;
+  box-shadow: var(--neu-raised-sm);
+}
+html[data-ui="neumorphic"] .contact-row:active { box-shadow: var(--neu-inset); }
+html[data-ui="neumorphic"] .contact-row--static:active { box-shadow: var(--neu-raised-sm); }
+html[data-ui="neumorphic"] .contact-sheet {
+  background: var(--neu-bg);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -10px 30px rgba(70, 84, 102, 0.25);
+}
+html[data-ui="neumorphic"] .contact-sheet__btn,
+html[data-ui="neumorphic"] .contact-sheet__cancel {
+  border: none;
+  border-radius: 16px;
+  box-shadow: var(--neu-raised-sm);
+}
+html[data-ui="neumorphic"] .contact-sheet__cancel { background: var(--neu-bg); }
+
+/* ---- top bar controls (language, portal, account) ---- */
+html[data-ui="neumorphic"] .lang-switcher__trigger,
+html[data-ui="neumorphic"] .portal-menu__trigger,
+html[data-ui="neumorphic"] .account-entry {
+  background: var(--neu-bg);
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--neu-raised-sm);
+}
+html[data-ui="neumorphic"] .lang-switcher__trigger:active,
+html[data-ui="neumorphic"] .portal-menu__trigger:active,
+html[data-ui="neumorphic"] .account-entry:active { box-shadow: var(--neu-inset); }
+html[data-ui="neumorphic"] .lang-switcher__menu,
+html[data-ui="neumorphic"] .portal-menu__drawer {
+  background: var(--neu-bg);
+  border: none;
+  border-radius: 18px;
+  box-shadow: var(--neu-raised);
+}
+html[data-ui="neumorphic"] .lang-switcher__option.is-active { box-shadow: var(--neu-inset); background: var(--neu-bg); }
+
+/* ---- banners / prompts / buttons that appear on the homepage ---- */
+html[data-ui="neumorphic"] .home__slow-banner {
+  border: none;
+  border-radius: 16px;
+  box-shadow: var(--neu-raised-sm);
+}
+html[data-ui="neumorphic"] .senior-prompt-card {
+  background: var(--neu-bg);
+  border: none;
+  border-radius: 22px;
+  box-shadow: var(--neu-raised);
+}
+html[data-ui="neumorphic"] .home .btn { border: none; border-radius: 16px; }
+html[data-ui="neumorphic"] .home .btn--primary { box-shadow: 5px 5px 12px var(--neu-dark), -5px -5px 12px var(--neu-light); }
+html[data-ui="neumorphic"] .home .btn--primary:active { box-shadow: inset 3px 3px 7px rgba(0, 0, 0, 0.3); }
+html[data-ui="neumorphic"] .home .btn--secondary { background: var(--neu-bg); box-shadow: var(--neu-raised-sm); }
+html[data-ui="neumorphic"] .home .btn--secondary:active { box-shadow: var(--neu-inset); }
+
+/* ---- announcement popup stays readable: soft card on a dim backdrop ---- */
+html[data-ui="neumorphic"] .announcement-card {
+  background: var(--neu-bg);
+  border: none;
+  border-radius: 26px;
+  box-shadow: var(--neu-raised);
+}
