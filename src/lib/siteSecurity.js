@@ -67,7 +67,10 @@ export function installDeterrents() {
     // legitimately need it for — typing their own text or picking an
     // image (e.g. an uploaded prescription/report).
     const el = e.target
-    const allowed = el.closest?.('input, textarea, [contenteditable="true"], img')
+    // On the staff/admin panels images stay saveable; on customer pages
+    // (see copyGuard.js) only form fields keep the native menu.
+    const onPanel = window.location.hash.startsWith('#/portal')
+    const allowed = el.closest?.(onPanel ? 'input, textarea, [contenteditable="true"], img' : 'input, textarea, [contenteditable="true"]')
     if (!allowed) e.preventDefault()
   })
 
