@@ -394,3 +394,7 @@ actually matters:
 - `vercel.json` sends real security headers (HSTS, no-framing, nosniff, Permissions-Policy, COOP…). `vite.config.js` uses base `/` on Vercel and `/Plasma-Care-/` on GitHub Pages automatically.
 - Run `supabase/portal_auto_logout.sql`; then Developer panel → Settings → **Portal auto-logout** controls the Staff/B2B/Admin/Developer inactivity sign-out. Customer account auto-logout stays always on.
 - Full list of dashboard settings to switch on: `docs/SECURITY.md`.
+
+## Visual styles
+- Homepage = Neumorphism (`src/theme/neumorphic.css`), all `/portal/...` panels = Flat (`src/theme/flat.css`), every other customer page = Material (`src/theme/material.css`). `src/components/UiTheme.jsx` tags `<html data-ui="...">` from the current route; each stylesheet only applies under its own tag, so a style can be changed or removed without touching the others.
+- Customer pages block copy / cut / text selection / long-press menu / drag (`src/lib/copyGuard.js` + the rules at the end of `styles/global.css`). Panels are exempt. This stops casual copying only — it can't stop screenshots.
